@@ -1,130 +1,110 @@
 import * as THREE from "three";
 import { seededRandom } from "../systems/rules.js";
-// Something in the clouds. Built from soft masses, hanging tendrils and a few
-// pale eyes; drawn faintly, unfogged, and only ever shown for a second or so.
+// What waits above the clouds: a vast black monolith, etched with faint gold,
+// splitting the sky with dark rays. Drawn unfogged and only ever glimpsed.
+function etchedTexture() {
+  if (typeof document === "undefined") return null; // headless tests
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 1024;
+  const g = c.getContext("2d"),
+    random = seededRandom(66);
+  g.fillStyle = "#050507";
+  g.fillRect(0, 0, 256, 1024);
+  // Angular glyphs, densest near the middle, catching a little light.
+  for (let i = 0; i < 260; i++) {
+    const y = 512 + (random() - 0.5) * 900 * random(),
+      x = 128 + (random() - 0.5) * 220 * (1 - Math.abs(y - 512) / 560),
+      len = 8 + random() * 40,
+      a = [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2][Math.floor(random() * 4)];
+    g.strokeStyle = `rgba(${190 + random() * 50}, ${150 + random() * 40}, 80, ${0.25 + random() * 0.55})`;
+    g.lineWidth = 2 + random() * 4;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function glowTexture() {
+  if (typeof document === "undefined") return null;
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d"),
+    grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.25, "rgba(225,220,240,0.6)");
+  grad.addColorStop(1, "rgba(200,200,220,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
 export class Eldritch {
   constructor(scene) {
     this.group = new THREE.Group();
     this.group.visible = false;
-    this.group.renderOrder = -1;
     scene.add(this.group);
-    const random = seededRandom(1313);
-    const flesh = new THREE.MeshBasicMaterial({
-      color: "#2a2340",
-      transparent: true,
-      opacity: 0,
-      fog: false,
-      depthWrite: false,
-    });
-    const shade = new THREE.MeshBasicMaterial({
-      color: "#16152a",
-      transparent: true,
-      opacity: 0,
-      fog: false,
-      depthWrite: false,
-    });
-    const eye = new THREE.MeshBasicMaterial({
-      color: "#c9c39a",
-      transparent: true,
-      opacity: 0,
-      fog: false,
-      depthWrite: false,
-    });
-    const pupil = new THREE.MeshBasicMaterial({
-      color: "#0b0a14",
-      transparent: true,
-      opacity: 0,
-      fog: false,
-      depthWrite: false,
-    });
-    const cloud = new THREE.MeshBasicMaterial({
-      color: "#272b47",
-      transparent: true,
-      opacity: 0,
-      fog: false,
-      depthWrite: false,
-    });
-    this.materials = { flesh, shade, eye, pupil, cloud };
-    this.body = new THREE.Group();
-    this.group.add(this.body);
-    // The mass: lumpy, overlapping, a little like weather.
+    const random = seededRandom(1313),
+      basic = (opts) =>
+        new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: 0,
+          fog: false,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          ...opts,
+        });
+    this.materials = {
+      glow: basic({ map: glowTexture(), color: "#f2eefa" }),
+      light: basic({ color: "#ece6f6", blending: THREE.AdditiveBlending }),
+      dark: basic({ color: "#07070b" }),
+      stone: basic({ map: etchedTexture(), color: "#ffffff", side: THREE.FrontSide }),
+      cloud: basic({ color: "#15151c" }),
+    };
+    const m = this.materials;
+    // Pale light breaking through behind it.
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), m.glow);
+    glow.position.z = -12;
+    this.group.add(glow);
+    // Rays fanning out from the centre: pale shafts and black streaks.
+    this.rays = new THREE.Group();
+    this.rays.position.z = -8;
+    this.group.add(this.rays);
+    for (let i = 0; i < 30; i++) {
+      const a = (i / 30) * Math.PI * 2 + random() * 0.15,
+        length = 90 + random() * 90,
+        width = 6 + random() * 18,
+        shape = new THREE.BufferGeometry();
+      shape.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+          [0, 0, 0, length, -width / 2, 0, length, width / 2, 0],
+          3,
+        ),
+      );
+      const ray = new THREE.Mesh(shape, i % 3 === 0 ? m.light : m.dark);
+      ray.rotation.z = a;
+      ray.position.z = i % 3 === 0 ? 0.5 : 0;
+      this.rays.add(ray);
+    }
+    // The monolith: an elongated, edge-on diamond.
+    this.stone = new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), m.stone);
+    this.stone.scale.set(6, 46, 6);
+    this.stone.rotation.y = Math.PI / 4;
+    this.group.add(this.stone);
+    // Storm clouds in front, so it is never seen cleanly.
     for (let i = 0; i < 16; i++) {
-      const g = new THREE.IcosahedronGeometry(1, 2),
-        p = g.attributes.position;
-      for (let k = 0; k < p.count; k++) {
-        const x = p.getX(k),
-          y = p.getY(k),
-          z = p.getZ(k),
-          n = 1 + Math.sin(x * 4 + i) * 0.12 + Math.sin(y * 5 - i) * 0.1;
-        p.setXYZ(k, x * n, y * n, z * n);
-      }
-      const m = new THREE.Mesh(g, i % 3 ? flesh : shade);
-      const a = (i / 16) * Math.PI * 2 + random();
-      m.position.set(
-        Math.cos(a) * (6 + random() * 9),
-        Math.sin(a * 2) * 4 + random() * 4,
-        (random() - 0.5) * 6,
+      const cloud = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), m.cloud);
+      const side = i % 2 ? 1 : -1;
+      cloud.position.set(
+        side * (14 + random() * 55),
+        (random() - 0.5) * 70,
+        8 + random() * 8,
       );
-      m.scale.set(7 + random() * 7, 5 + random() * 5, 6);
-      this.body.add(m);
-    }
-    // Tendrils hang and curl beneath it.
-    this.tendrils = [];
-    for (let i = 0; i < 9; i++) {
-      const sx = (i - 4) * 4.2 + (random() - 0.5) * 2,
-        len = 18 + random() * 20,
-        points = [];
-      for (let k = 0; k <= 6; k++) {
-        const t = k / 6;
-        points.push(
-          new THREE.Vector3(
-            sx + Math.sin(t * 3 + i) * 3 * t,
-            -4 - t * len,
-            Math.cos(t * 2.5 + i) * 2 * t,
-          ),
-        );
-      }
-      const curve = new THREE.CatmullRomCurve3(points);
-      const tube = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 24, 0.9 + random() * 0.6, 5),
-        i % 2 ? flesh : shade,
-      );
-      const holder = new THREE.Group();
-      holder.add(tube);
-      holder.userData.phase = random() * 6;
-      this.body.add(holder);
-      this.tendrils.push(holder);
-    }
-    // Eyes, unevenly placed and sized. Some will not be open.
-    this.eyes = [];
-    for (let i = 0; i < 8; i++) {
-      const holder = new THREE.Group(),
-        r = 0.5 + random() * 1.1;
-      holder.position.set(
-        (random() - 0.5) * 34,
-        (random() - 0.35) * 14,
-        5 + random() * 2,
-      );
-      const white = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), eye);
-      white.scale.set(1.5, 1, 0.4);
-      const slit = new THREE.Mesh(new THREE.SphereGeometry(r * 0.55, 10, 6), pupil);
-      slit.scale.set(0.35, 1.5, 0.3);
-      slit.position.z = r * 0.35;
-      holder.add(white, slit);
-      holder.userData.delay = random() * 0.5;
-      this.body.add(holder);
-      this.eyes.push(holder);
-    }
-    // Darkened clouds drift in front, so it is never seen whole.
-    for (let i = 0; i < 14; i++) {
-      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), cloud);
-      m.position.set(
-        (random() - 0.5) * 60,
-        -8 + random() * 16,
-        10 + random() * 6,
-      );
-      m.scale.set(12 + random() * 12, 3 + random() * 3, 4);
-      this.group.add(m);
+      cloud.scale.set(18 + random() * 22, 6 + random() * 8, 5);
+      this.group.add(cloud);
     }
   }
   // Place it high in the sky in the direction the camera will fall towards.
@@ -134,27 +114,21 @@ export class Eldritch {
       Math.sin(0.95),
       -Math.cos(yaw) * Math.cos(0.95),
     );
-    this.group.position.copy(camera.position).addScaledVector(dir, 92);
+    this.group.position.copy(camera.position).addScaledVector(dir, 95);
     this.group.lookAt(camera.position);
-    this.group.scale.setScalar(2.3); // bigger than the frame: never seen whole
+    this.group.scale.setScalar(1.1);
   }
   update(t, visibility) {
     this.group.visible = visibility > 0.001;
     if (!this.group.visible) return;
-    const m = this.materials;
-    m.flesh.opacity = 0.42 * visibility;
-    m.shade.opacity = 0.55 * visibility;
+    const m = this.materials,
+      pulse = 0.85 + 0.15 * Math.sin(t * 9);
+    m.glow.opacity = 0.55 * visibility * pulse;
+    m.light.opacity = 0.35 * visibility * pulse;
+    m.dark.opacity = 0.85 * visibility;
+    m.stone.opacity = visibility;
     m.cloud.opacity = 0.8 * visibility;
-    m.eye.opacity = 0.2 * visibility;
-    m.pupil.opacity = 0.35 * visibility;
-    this.body.position.y = Math.sin(t * 0.8) * 1.2;
-    this.body.rotation.z = Math.sin(t * 0.3) * 0.04;
-    for (const tendril of this.tendrils)
-      tendril.rotation.z = Math.sin(t * 1.4 + tendril.userData.phase) * 0.12;
-    for (const e of this.eyes) {
-      // Eyes open late and unevenly, then one by one close.
-      const open = THREE.MathUtils.smoothstep(t, 0.85 + e.userData.delay, 1.15 + e.userData.delay);
-      e.scale.y = Math.max(0.05, open);
-    }
+    this.rays.rotation.z = t * 0.12;
+    this.stone.rotation.y = Math.PI / 4 + t * 0.15;
   }
 }

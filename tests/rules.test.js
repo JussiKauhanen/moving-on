@@ -105,6 +105,17 @@ test("a spore release spreads, then always burns out at its budget", () => {
   assert.equal(total, 25);
   assert.equal(grass.infected.size, 0);
 });
+test("spores keep spreading past a freshly cut patch", () => {
+  const grass = new Grass(new THREE.Scene(), level),
+    t = grass.tufts[9000];
+  // The player has just cut a clearing; spores are released at its edge.
+  grass.cut(t.x, t.z, 0.9, 999);
+  grass.infect(t.x, t.z, 1.2, 40);
+  let total = 0;
+  for (let i = 0; i < 80 && (grass.infected.size || !total); i++)
+    total += grass.update(0.5, i, 0.6).length;
+  assert.equal(total, 40);
+});
 test("spore skills widen the spread and shorten the cooldown", () => {
   const s = state();
   const base = sporeStats(s);

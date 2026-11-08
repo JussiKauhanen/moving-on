@@ -93,13 +93,13 @@ export class FlowerIncident {
       "YXZ",
     );
     // A glimpse only: it is there while you fall, gone before you hit the ground.
-    this.horror.update(t, smooth(0.7, 1.05, t) * (1 - smooth(1.45, 1.8, t)));
+    this.horror.update(t, smooth(0.6, 0.95, t) * (1 - smooth(1.6, 2.05, t)));
     if (t > 0.95 && !this.groaned) {
       this.groaned = true;
       this.audio.groan?.();
     }
     this.veil.style.opacity = String(
-      smooth(1.45, 2.1, t) * (1 - smooth(3.3, 5, t)),
+      smooth(1.7, 2.15, t) * (1 - smooth(3.3, 5, t)),
     );
     if (t >= 5.4) {
       this.active = false;

@@ -65,7 +65,8 @@ try {
       await page.evaluate((id) => window.__garden.state.items.has(id), id),
     );
   }
-  // Force only the 7% random draw; the real cut then charges a power cut by itself.
+  // Force only the random draw: the cut itself lands as a wider power cut.
+  const before = await page.evaluate(() => window.__garden.state.score);
   await page.evaluate(async () => {
     const g = window.__garden;
     g.teleport(-5, 11, 0, -0.4);
@@ -86,21 +87,8 @@ try {
       Math.random = random;
     }
   });
-  assert.equal(await page.evaluate(() => !!window.__garden.state.power), true);
-  const before = await page.evaluate(() => window.__garden.state.score);
-  // No input needed: the wind-up releases automatically into a big cut.
-  await page.waitForFunction(
-    () => !window.__garden.state.power && !window.__garden.state.action,
-    null,
-    { timeout: 20000 },
-  );
-  const result = await page.evaluate(() => ({
-    score: window.__garden.state.score,
-    shock: window.__garden.grass.shockUniform.value.w,
-    kick: window.__garden.state.kick,
-  }));
-  assert.ok(result.score - before >= 9, "Power cut clears a wide patch");
-  assert.equal(result.shock, 1, "Grass shockwave fired");
+  const gained = (await page.evaluate(() => window.__garden.state.score)) - before;
+  assert.ok(gained > 10, `Power cut clears three times the blades (${gained})`);
   await page.screenshot({ path: "test-results/critical.png" });
   // The sporepod waits in the cove beneath the well.
   await page.evaluate(() => {
@@ -166,7 +154,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: buried discoveries, automatic power cut and shockwave, cove and sporepod, spore propagation/score, successful departure.",
+    "PASS: buried discoveries, power cuts, cove and sporepod, spore propagation/score, successful departure.",
   );
 } finally {
   await browser.close();

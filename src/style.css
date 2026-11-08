@@ -1472,3 +1472,22 @@ body.playing #sound-button {
 #spore-meter.ready {
   color: #ffd2c4;
 }
+#finds-line {
+  margin: 8px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #fff6dfcc;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#finds-line b {
+  color: #ffe0a0;
+  font-weight: 600;
+}
+.finds-icon {
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(to top, #ffd98a, #ffd98a00);
+  box-shadow: 0 0 6px #ffd98a;
+}

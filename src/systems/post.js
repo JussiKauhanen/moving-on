@@ -30,7 +30,7 @@ varying vec2 vUv;
 uniform sampler2D tColor;
 uniform sampler2D tDepth;
 uniform vec2 lowRes;
-uniform float time, exposure, glow, lift, levels, dither, saturation, split, outline, outlineFar;
+uniform float time, exposure, glow, lift, gloom, levels, dither, saturation, split, outline, outlineFar;
 uniform float aberration, scanlines, grain, vignette, cameraNear, cameraFar, flash, warp;
 uniform vec3 liftColor, shadowTint, highlightTint, outlineColor, flashColor;
 
@@ -102,7 +102,9 @@ void main() {
   float b = bayer4(cell) - 0.5;
   col = floor(clamp(col, 0., 1.) * levels + 0.5 + b * dither) / levels;
 
-  col *= 1. - vignette * pow(clamp(length(fromCenter) * 1.25, 0., 1.), 2.4);
+  // Gloom: the world dims and the edges close in (near the house door).
+  col *= 1. - gloom * 0.55;
+  col *= 1. - (vignette + gloom * 0.9) * pow(clamp(length(fromCenter) * 1.25, 0., 1.), 2.4 - gloom);
   float line = 0.5 + 0.5 * cos(gl_FragCoord.y * 3.14159265 * 0.6667);
   col *= 1. - scanlines * line;
   col += (hash(gl_FragCoord.xy + fract(time * 7.1) * 91.) - 0.5) * grain;
@@ -134,6 +136,7 @@ export class RetroPost {
         time: { value: 0 },
         exposure: { value: 1 },
         glow: { value: look.glow },
+        gloom: { value: 0 },
         lift: { value: look.lift },
         liftColor: { value: new THREE.Color(look.liftColor) },
         cameraNear: { value: camera.near },

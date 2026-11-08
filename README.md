@@ -30,13 +30,27 @@ The clock pauses when a menu is open, the window loses focus, or the mouse is re
 
 ## The first day
 
-Arrive by bus, open the gate, and start pulling individual blades. The shed on the left contains a readable note and rusty clippers. Oil and a whetstone in the small shelter on the right automatically improve your clippers. A brass cricket is buried in the lawn and becomes interactable when the surrounding grass is cleared. The old well can be looked into (**E**) or climbed down (**F**): a rope leads to an underground cove with a glowing pool and a shaft of daylight, where the sporepod lies. Climb back up the rope (**E**) — if you carried the pod, the game notes that something came up with you.
+Arrive by bus, open the gate, and start pulling individual blades. The shed on the left contains a readable note and rusty clippers. Oil and a whetstone in the small shelter on the right automatically improve your clippers. A brass cricket and the keepsakes lie in the lawn from the start, half-hidden by the grass. Walk right up to one (within about 1.6 m) and look down to pick it up, or cut the grass around it. The old well can be looked into (**E**) or climbed down (**F**): a rope leads to an underground cove with a glowing pool and a shaft of daylight, where the sporepod lies. Climb back up the rope (**E**) — if you carried the pod, the game notes that something came up with you.
 
 Every blade removed adds to the lifetime score and to the clippings available to spend. Spending clippings never reduces the score. The journal has hand speed, clipping speed, critical chance, and spore upgrades with prerequisites. Power cuts are initially locked; the first unlock gives a 7% chance per successful cut to trigger one automatically. The hands wind up and tremble (rising charge sound, narrowing view), then release a 3× cut with a wider radius: a ground ring, flung clippings, a hit-stop, an FOV punch and camera shake, a low thump and a wide whoosh, and a shockwave that bends the surrounding grass outward before it springs back. Timing lives in `POWER` at the top of `src/main.js`. The brass cricket adds 3 percentage points only after power cuts are unlocked.
 
-Spore-infected grass darkens, withers, and can spread to neighboring blades. Withering awards the same score as manual cutting. Flowers are cuttable but do not increase the grass score: cutting one triggers a brief darkening and a fall backwards into the sky — where, for about half a second, something vast with too many eyes is visible among the darkened clouds — then blackout, followed by silent recovery. The clock and controls freeze during the sequence. Escape safely pauses it; the garden returns to its exact previous lighting without a notification. The house cannot be entered. You can walk inside both sheds.
+Spore-infected grass darkens, withers, and can spread to neighboring blades. Withering awards the same score as manual cutting. Flowers are cuttable but do not increase the grass score: cutting one triggers a brief darkening and a fall backwards into the sky — where, for about a second, a vast black monolith etched in gold splits the storm clouds with dark rays — then blackout, followed by silent recovery. The clock and controls freeze during the sequence. Escape safely pauses it; the garden returns to its exact previous lighting without a notification. The house cannot be entered. You can walk inside both sheds.
 
 The day lasts 18 active minutes, from 09:00 to 19:00. Restore 90% of the lawn and leave through the gate for the good ending. Sunset also ends the day. Small changes in the soundscape and house appear later in the afternoon. Progress is session-only: reloading starts a fresh day. The farm/wheat level is not implemented yet.
+
+## Finding things
+
+One buried find at a time (the nearest keepsake or the brass cricket) sends up a soft gold pillar of light, visible across the garden and fading as you get close; once it is taken, the next nearest one lights. The HUD shows **Keepsakes found / total**. About 170 small wild flowers (a stem and a dot of colour, `src/world/wildflowers.js`) are scattered through the lawn for variety; they are taken silently by nearby cuts and affect nothing.
+
+The house door: the world dims and the edges of vision close in as you approach it. Trying the door gets you shoved back by the dark, with a low roar. The game never mentions it.
+
+## Clippings and withering
+
+Every cut leaves a few clippings lying on the ground (up to 5,000, oldest recycled first). Spore-withered grass stays as short, slumped, dark stalks, and small black wisps are drawn out of it and drift towards the player before fading. Skill prices are all scaled by `PRICE_MULTIPLIER` in `src/systems/rules.js` (currently 1.5).
+
+## Messages
+
+Short messages come from the gardener: a small avatar with a speech bubble and a little babble sound (`toast(text, duration, mood)` in `src/main.js`). The `"worried"` mood changes the face, bubble and voice for the unsettling moments.
 
 ## Diary
 
@@ -124,6 +138,10 @@ This workspace has not been connected to or published to a GitHub repository.
 With the dev server running, `npm run test:browser` launches an isolated headless Chrome instance and verifies gameplay, capturing screenshots into ignored `test-results/`. By default it uses the macOS Chrome application; set `CHROME_PATH` for another installation. The `?test=1` harness exists only in Vite development mode and is removed from production builds. `node scripts/feel-qa.mjs` checks contact timing, alternating hands, the snip waveform, HUD, skill branches, and flower blackout/recovery. `npm run test:production` builds and tests the static output under `/mowing-on/`, including local audio requests. The browser tests use seeded late-game fixtures for rare criticals and completion thresholds.
 
 ## Audio
+
+Ambience layers, all synthesised in `src/systems/audio.js`: wind, several kinds of birdsong (trills, two-note calls and chirps, panned at random distances, quieter late in the day), a faint pulsing cricket shimmer that grows towards evening, and the occasional fly buzzing past.
+
+**Bird samples (optional):** recordings can't be downloaded from this build environment, so none are bundled. To use real birdsong, put CC0 recordings at `public/audio/birds-1.ogg`, `birds-2.ogg` and `birds-3.ogg`; they are picked up automatically and mixed with the synthesised birds, and missing files are skipped. Good CC0 sources: OpenGameArt (filter by CC0) and Freesound (filter by Creative Commons 0). List what you add in `public/audio/CREDITS.md`.
 
 The cove has its own ambience: a low drone, irregular water drips with stone echoes, and the music falls away. Looking into the well plays a low beat with breathy, word-like whispers. Power cuts, the rope, and the distant groan in the clouds are synthesised in `src/systems/audio.js`.
 

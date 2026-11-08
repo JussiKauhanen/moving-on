@@ -146,8 +146,13 @@ export class Grass {
   }
   setTransform(t) {
     this.dummy.position.set(t.x, 0.025, t.z);
-    this.dummy.rotation.set(0, t.angle, 0);
-    this.dummy.scale.set(t.cut ? 0.5 : t.width, t.cut ? 0.065 : t.height, 1);
+    // Withered blades stay standing as short, slumped, dead stalks.
+    this.dummy.rotation.set(t.withered ? 0.55 : 0, t.angle, 0);
+    this.dummy.scale.set(
+      t.cut ? (t.withered ? 0.8 : 0.5) : t.width,
+      t.cut ? (t.withered ? t.height * 0.32 : 0.065) : t.height,
+      1,
+    );
     this.dummy.updateMatrix();
     this.mesh.setMatrixAt(t.index, this.dummy.matrix);
   }
@@ -169,19 +174,20 @@ export class Grass {
     for (const t of list) this.remove(t);
     return list;
   }
-  remove(t) {
+  remove(t, withered = false) {
     if (t.cut) return;
     t.cut = true;
+    t.withered = withered;
     this.cutCount++;
     this.infected.delete(t);
     this.setTransform(t);
-    this.mesh.setColorAt(t.index, new THREE.Color("#5f7d66"));
+    this.mesh.setColorAt(t.index, new THREE.Color(withered ? "#4a3f4e" : "#5f7d66"));
     this.mesh.instanceColor.needsUpdate = true;
     this.mesh.instanceMatrix.needsUpdate = true;
   }
   // Start a spore outbreak. It can only ever wither `budget` blades in total:
   // the first patch, then neighbours as each blade dies, until the budget is spent.
-  infect(x, z, r, budget = 12, seeds = 5) {
+  infect(x, z, r, budget = 12, seeds = 8) {
     const outbreak = { left: budget };
     let planted = 0;
     const list = this.near(x, z, r)
@@ -211,18 +217,21 @@ export class Grass {
       t.infection += dt / wither;
       if (t.infection >= 1) {
         const outbreak = t.outbreak;
-        this.remove(t);
+        this.remove(t, true);
         removed.push(t);
-        // Pass it on to up to two of the nearest healthy blades.
+        // Pass it on to up to three of the nearest healthy blades.
         if (outbreak && outbreak.left > 0) {
-          const next = this.near(t.x, t.z, 0.42)
-            .filter((n) => !n.infection)
+          // Look a little further if the nearest grass has already been cut.
+          let healthy = this.near(t.x, t.z, 0.5).filter((n) => !n.infection);
+          if (!healthy.length)
+            healthy = this.near(t.x, t.z, 1.1).filter((n) => !n.infection);
+          const next = healthy
             .sort(
               (a, b) =>
                 Math.hypot(a.x - t.x, a.z - t.z) -
                 Math.hypot(b.x - t.x, b.z - t.z),
             )
-            .slice(0, 2);
+            .slice(0, 3);
           for (const n of next) if (outbreak.left > 0) this.seed(n, outbreak);
         }
       } else if (t.infection > 0.4 && !t.tinted) {

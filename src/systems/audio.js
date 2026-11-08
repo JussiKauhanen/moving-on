@@ -4,6 +4,11 @@ const SAMPLES = {
   pull: "pull.ogg",
   step: "step.ogg",
   pickup: "pickup.ogg",
+  // Optional: drop real birdsong recordings here (see README). Missing files
+  // are skipped and synthesised birds are used instead.
+  bird1: "birds-1.ogg",
+  bird2: "birds-2.ogg",
+  bird3: "birds-3.ogg",
 };
 export class GameAudio {
   constructor() {
@@ -286,7 +291,7 @@ export class GameAudio {
     lp.frequency.exponentialRampToValueAtTime(520, end);
     shaper.curve = this.grit(2.5);
     out.gain.setValueAtTime(0.0001, now);
-    out.gain.exponentialRampToValueAtTime(0.32, end - 0.03);
+    out.gain.exponentialRampToValueAtTime(0.2, end - 0.03);
     out.gain.exponentialRampToValueAtTime(0.0001, end + 0.06);
     lp.connect(shaper).connect(out).connect(this.master);
     for (const [type, f, detune] of [
@@ -332,7 +337,7 @@ export class GameAudio {
     thump.frequency.setValueAtTime(95, now);
     thump.frequency.exponentialRampToValueAtTime(28, now + 0.55);
     tg.gain.setValueAtTime(0.0001, now);
-    tg.gain.exponentialRampToValueAtTime(0.75, now + 0.008);
+    tg.gain.exponentialRampToValueAtTime(0.45, now + 0.008);
     tg.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
     thump.connect(tg).connect(this.master);
     thump.start(now);
@@ -348,7 +353,7 @@ export class GameAudio {
     cf.frequency.exponentialRampToValueAtTime(220, now + 0.25);
     cs.curve = this.grit(6);
     cg.gain.setValueAtTime(0.0001, now);
-    cg.gain.exponentialRampToValueAtTime(0.22, now + 0.004);
+    cg.gain.exponentialRampToValueAtTime(0.12, now + 0.004);
     cg.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
     crunch.connect(cf).connect(cs).connect(cg).connect(this.master);
     crunch.start(now, Math.random() * 0.5);
@@ -367,8 +372,8 @@ export class GameAudio {
       bp.frequency.setValueAtTime(1100, now);
       bp.frequency.exponentialRampToValueAtTime(140, now + 0.9);
       g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(0.3, now + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+      g.gain.exponentialRampToValueAtTime(0.17, now + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
       pan.pan.setValueAtTime(0, now);
       pan.pan.linearRampToValueAtTime(side * 0.85, now + 0.8);
       n.connect(bp).connect(g).connect(pan).connect(this.master);
@@ -396,6 +401,28 @@ export class GameAudio {
     n.connect(bp).connect(g).connect(this.master);
     n.start(now, Math.random() * 0.8);
     n.stop(now + length + 0.01);
+  }
+  // Cute little babble while the gardener "talks": one blip per word or so.
+  blips(text, mood = "happy") {
+    if (!this.ctx) return;
+    const words = Math.min(14, Math.max(3, text.split(/\s+/).length)),
+      base = mood === "worried" ? 300 : 520,
+      now = this.ctx.currentTime;
+    for (let i = 0; i < words; i++) {
+      const o = this.ctx.createOscillator(),
+        g = this.ctx.createGain(),
+        t = now + i * 0.065,
+        f = base * (1 + (Math.random() - 0.5) * 0.35);
+      o.type = "triangle";
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * (mood === "worried" ? 0.85 : 1.15), t + 0.05);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.035, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 0.06);
+    }
   }
   pageTurn() {
     this.noise(0.18, 0.18, 1800);
@@ -541,6 +568,8 @@ export class GameAudio {
       0.4,
     );
     this.music?.update(paused, unconscious || this.underground);
+    if ((paused || unconscious || this.underground) && this.cricket)
+      this.cricket.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
     if (paused || unconscious) return;
     if (moving && time - this.lastStep > 0.43) {
       this.lastStep = time;
@@ -555,11 +584,180 @@ export class GameAudio {
       }
       return;
     }
-    if (time - this.lastBird > 7 + Math.random() * 7 && progress < 0.72) {
+    this.insects(progress);
+    if (time - this.lastBird > (this.nextBird ||= 5) && progress < 0.72) {
       this.lastBird = time;
-      const f = 1600 + Math.random() * 900;
-      this.tone(f, 0.12, 0.025, "sine", f * 1.3);
-      setTimeout(() => this.tone(f * 1.1, 0.17, 0.02, "sine", f), 180);
+      this.nextBird = 5 + Math.random() * 11;
+      this.bird();
     }
+    if (time - (this.lastFly || 0) > (this.nextFly ||= 30)) {
+      this.lastFly = time;
+      this.nextFly = 25 + Math.random() * 45;
+      this.fly();
+    }
+  }
+  // A bird somewhere off to one side: a recorded sample if one is bundled,
+  // otherwise one of a few synthesised calls.
+  bird() {
+    const samples = ["bird1", "bird2", "bird3"].filter((k) => this.buffers[k]);
+    if (samples.length && Math.random() < 0.7) {
+      const source = this.ctx.createBufferSource(),
+        gain = this.ctx.createGain(),
+        pan = this.ctx.createStereoPanner();
+      source.buffer = this.buffers[samples[Math.floor(Math.random() * samples.length)]];
+      source.playbackRate.value = 0.95 + Math.random() * 0.1;
+      gain.gain.value = 0.12 + Math.random() * 0.1;
+      pan.pan.value = Math.random() * 1.6 - 0.8;
+      source.connect(gain).connect(pan).connect(this.master);
+      source.start();
+      return;
+    }
+    const ctx = this.ctx,
+      pan = ctx.createStereoPanner(),
+      out = ctx.createGain(),
+      t0 = ctx.currentTime + 0.05,
+      base = 2200 + Math.random() * 1600,
+      kind = Math.floor(Math.random() * 3);
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    out.gain.value = 0.5 + Math.random() * 0.5; // distance
+    out.connect(pan).connect(this.master);
+    // One sung note: a sine with a fast pitch sweep and a little vibrato.
+    const note = (start, length, from, to, level = 0.03) => {
+      const o = ctx.createOscillator(),
+        g = ctx.createGain(),
+        vib = ctx.createOscillator(),
+        vibGain = ctx.createGain();
+      o.frequency.setValueAtTime(from, start);
+      o.frequency.exponentialRampToValueAtTime(to, start + length);
+      vib.frequency.value = 30 + Math.random() * 25;
+      vibGain.gain.value = from * 0.03;
+      vib.connect(vibGain).connect(o.frequency);
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(level, start + length * 0.25);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + length);
+      o.connect(g).connect(out);
+      o.start(start);
+      vib.start(start);
+      o.stop(start + length + 0.02);
+      vib.stop(start + length + 0.02);
+    };
+    if (kind === 0) {
+      // A quick descending trill.
+      const n = 6 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < n; i++)
+        note(t0 + i * 0.07, 0.06, base * (1.25 - i * 0.03), base * (1.05 - i * 0.03), 0.022);
+    } else if (kind === 1) {
+      // Two clear notes, "tee-oo", sometimes repeated.
+      const reps = 1 + Math.floor(Math.random() * 2);
+      for (let r = 0; r < reps; r++) {
+        note(t0 + r * 0.6, 0.18, base * 1.1, base * 1.15, 0.026);
+        note(t0 + r * 0.6 + 0.22, 0.26, base * 0.95, base * 0.72, 0.022);
+      }
+    } else {
+      // Scattered chirps.
+      const n = 3 + Math.floor(Math.random() * 4);
+      let t = t0;
+      for (let i = 0; i < n; i++) {
+        note(t, 0.05, base * 0.8, base * 1.4, 0.02);
+        t += 0.09 + Math.random() * 0.12;
+      }
+    }
+  }
+  // Crickets: a faint pulsing shimmer, a little louder towards evening.
+  insects(progress) {
+    if (!this.cricket) {
+      const ctx = this.ctx,
+        carrier = ctx.createOscillator(),
+        pulse = ctx.createOscillator(),
+        pulseGain = ctx.createGain(),
+        chirp = ctx.createGain(),
+        bp = ctx.createBiquadFilter();
+      this.cricket = ctx.createGain();
+      this.cricket.gain.value = 0;
+      carrier.frequency.value = 4600;
+      pulse.type = "square";
+      pulse.frequency.value = 28;
+      pulseGain.gain.value = 0.5;
+      chirp.gain.value = 0.5;
+      pulse.connect(pulseGain).connect(chirp.gain);
+      bp.type = "bandpass";
+      bp.frequency.value = 4600;
+      bp.Q.value = 8;
+      carrier.connect(chirp).connect(bp).connect(this.cricket);
+      this.cricket.connect(this.master);
+      carrier.start();
+      pulse.start();
+    }
+    // Chirps come in short bursts with gaps between them.
+    const now = this.ctx.currentTime,
+      on = Math.sin(now * 2.1) > 0.35 && Math.sin(now * 0.23) > -0.4,
+      level = (0.004 + progress * 0.01) * (on ? 1 : 0);
+    this.cricket.gain.setTargetAtTime(level, now, 0.05);
+  }
+  // Now and then something buzzes past.
+  fly() {
+    const ctx = this.ctx,
+      now = ctx.currentTime,
+      o = ctx.createOscillator(),
+      bp = ctx.createBiquadFilter(),
+      g = ctx.createGain(),
+      pan = ctx.createStereoPanner(),
+      dir = Math.random() < 0.5 ? -1 : 1,
+      length = 1.6 + Math.random() * 1.2;
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(170 + Math.random() * 40, now);
+    o.frequency.linearRampToValueAtTime(150 + Math.random() * 40, now + length);
+    bp.type = "bandpass";
+    bp.frequency.value = 600;
+    bp.Q.value = 1.2;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.012, now + length * 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    pan.pan.setValueAtTime(-dir * 0.9, now);
+    pan.pan.linearRampToValueAtTime(dir * 0.9, now + length);
+    o.connect(bp).connect(g).connect(pan).connect(this.master);
+    o.start(now);
+    o.stop(now + length + 0.05);
+  }
+  // The house door: something in the dark shoves you away.
+  shove() {
+    if (!this.ctx || !this.snipBuffer) return;
+    const ctx = this.ctx,
+      now = ctx.currentTime;
+    const roar = ctx.createOscillator(),
+      lp = ctx.createBiquadFilter(),
+      shaper = ctx.createWaveShaper(),
+      g = ctx.createGain();
+    roar.type = "sawtooth";
+    roar.frequency.setValueAtTime(70, now);
+    roar.frequency.exponentialRampToValueAtTime(31, now + 1.1);
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(900, now);
+    lp.frequency.exponentialRampToValueAtTime(120, now + 1);
+    shaper.curve = this.grit(4);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.35, now + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+    roar.connect(lp).connect(shaper).connect(g).connect(this.master);
+    roar.start(now);
+    roar.stop(now + 1.25);
+    // A breath rushing out of the doorway.
+    const n = ctx.createBufferSource(),
+      bp = ctx.createBiquadFilter(),
+      ng = ctx.createGain();
+    n.buffer = this.snipBuffer;
+    n.loop = true;
+    n.playbackRate.value = 0.5;
+    bp.type = "bandpass";
+    bp.Q.value = 0.7;
+    bp.frequency.setValueAtTime(400, now);
+    bp.frequency.exponentialRampToValueAtTime(2400, now + 0.25);
+    bp.frequency.exponentialRampToValueAtTime(300, now + 0.9);
+    ng.gain.setValueAtTime(0.0001, now);
+    ng.gain.exponentialRampToValueAtTime(0.3, now + 0.06);
+    ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.95);
+    n.connect(bp).connect(ng).connect(this.master);
+    n.start(now);
+    n.stop(now + 1);
   }
 }

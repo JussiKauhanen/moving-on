@@ -13,11 +13,14 @@ import { Discoveries } from "./systems/discoveries.js";
 import { GameAudio } from "./systems/audio.js";
 import { RetroPost, LOOK } from "./systems/post.js";
 import { Cove, COVE } from "./world/cove.js";
+import { Beacons } from "./world/beacons.js";
+import { WildFlowers } from "./world/wildflowers.js";
 import { renderSkillTree } from "./ui/skill-tree.js";
 import { treeIcon } from "./ui/tree-icons.js";
 import { Diary } from "./ui/diary.js";
 import { gardenDiary } from "./levels/garden-diary.js";
 import "./diary.css";
+import "./ui.css";
 import {
   skillCost,
   upgradeProgress,
@@ -25,8 +28,8 @@ import {
   sporeStats,
   clamp,
 } from "./systems/rules.js";
-// Power cut timing: a short automatic wind-up, then the release.
-const POWER = { charge: 0.34, radius: 1.9, limit: 3, fov: 64 };
+// Power cut: a chance on any cut to clear a wider patch, three times the blades.
+const POWER = { radius: 1.7, limit: 3 };
 const $ = (id) => document.getElementById(id);
 const canvas = $("game");
 let renderer;
@@ -134,6 +137,12 @@ const world = buildGarden(scene, level),
   post = new RetroPost(renderer, camera),
   cove = new Cove();
 const discoveries = new Discoveries(world.interactables, grass);
+const beacons = new Beacons(
+  scene,
+  world.interactables.filter((p) => p.lore || p.id === "charm"),
+);
+const wildFlowers = new WildFlowers(scene, level);
+const door = world.interactables.find((p) => p.id === "house").position;
 const incident = new FlowerIncident({
   player,
   camera,
@@ -175,11 +184,8 @@ const state = {
   totalTime: 0,
   cooldown: 0,
   held: false,
-  power: null,
   sporeCooldown: 0,
-  kick: 0,
-  flash: 0,
-  hitstop: 0,
+  shove: null,
   underground: false,
   transition: false,
   surface: null,
@@ -197,11 +203,19 @@ let loreReturn = null;
 const direction = new THREE.Vector3(),
   aim = new THREE.Vector3();
 document.body.classList.add("menu");
-function toast(text, duration = 4200) {
+// Messages come from the gardener: a small avatar and a speech bubble.
+// mood: "happy" (default) or "worried" for the unsettling moments.
+function toast(text, duration = 4200, mood = "happy") {
   clearTimeout(toastTimer);
-  $("toast").textContent = text;
-  $("toast").classList.add("show");
-  toastTimer = setTimeout(() => $("toast").classList.remove("show"), duration);
+  const el = $("toast");
+  $("toast-text").textContent = text;
+  el.dataset.mood = mood;
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show", "talking");
+  audio.blips?.(text, mood);
+  setTimeout(() => el.classList.remove("talking"), Math.min(2200, 60 * text.split(" ").length + 300));
+  toastTimer = setTimeout(() => el.classList.remove("show"), duration);
 }
 function setModal(name) {
   state.modal = name;
@@ -372,7 +386,7 @@ function equip(tool) {
   if (incident.active) return;
   state.action = null;
   if (tool === "clippers" && !state.items.has("clippers")) {
-    toast("There might be something useful in the shed.");
+    toast("Maybe there's something useful in the shed?");
     return;
   }
   state.tool = tool;
@@ -397,7 +411,7 @@ function lineBlocked(a, b) {
   return false;
 }
 function findTarget() {
-  discoveries.update();
+  discoveries.update(state.underground ? null : camera.position);
   camera.getWorldDirection(direction);
   let best = null,
     bestScore = -1;
@@ -444,13 +458,18 @@ function interact(key = "E") {
   if (item.id === "gate") {
     world.gateOpen = true;
     audio.creak();
-    toast("The latch gives way. The garden is yours for the day.");
+    toast("The gate's open! The garden's all mine today.");
   } else if (item.id === "note") {
     state.readNote = true;
     writeDiary("note");
   } else if (item.id === "house") {
-    audio.creak();
-    toast("Locked. Your work is out here.", 3500);
+    // No message. The dark in the doorway simply pushes you away.
+    const away = new THREE.Vector2(
+      camera.position.x - door.x,
+      camera.position.z - door.z,
+    ).normalize();
+    state.shove = { t: 0, x: away.x, z: away.y };
+    audio.shove();
   } else if (item.id === "well" && key === "F") {
     travel(true);
   } else if (item.id === "well") {
@@ -458,11 +477,12 @@ function interact(key = "E") {
     state.wellLooks = (state.wellLooks || 0) + 1;
     toast(
       state.dayTime > 500
-        ? "Something below stops moving when you look."
+        ? "Something below stops moving when I look..."
         : state.wellLooks > 1
-          ? "Far down, a pale light. The rope is long enough to climb. [F]"
-          : "The water is very still. Your reflection seems a little late.",
+          ? "There's a pale light way down there. The rope looks long enough to climb!"
+          : "The water's so still. My reflection seems... a little late?",
       5000,
+      "worried",
     );
   } else if (item.id === "rope") {
     travel(false);
@@ -479,16 +499,16 @@ function interact(key = "E") {
     }
     const messages = {
       clippers:
-        "Rusty clippers. A little stiff, but better than nothing. [2] to equip.",
-      oil: "A few drops of oil. Your clippers now recover 8% sooner.",
+        "Clippers! A bit rusty, but they'll do. (Press 2)",
+      oil: "Oil! The clippers should snip a little quicker now.",
       stone:
-        "A keen edge. A slightly wider cut. One extra blade with each snip.",
+        "A whetstone. Nice and sharp now, a bit more per snip!",
       charm:
-        "A brass cricket, warm to the touch. +3% power-cut chance after unlocking.",
+        "A little brass cricket. It's warm. Feels lucky!",
       spores:
-        "The sporepod is warm, and slowly breathing. A new branch has appeared in your field notes.",
+        "Oh... it's warm. And it's breathing. Something new in my skills.",
     };
-    toast(messages[item.id], 5200);
+    toast(messages[item.id], 5200, item.id === "spores" ? "worried" : "happy");
     if (item.id === "clippers") equip("clippers");
   }
   target = null;
@@ -500,8 +520,6 @@ function travel(down) {
   state.transition = true;
   state.held = false;
   state.action = null;
-  state.power = null;
-  hands.charge = 0;
   target = null;
   player.enabled = false;
   player.keys.clear();
@@ -541,7 +559,7 @@ function travel(down) {
       if (!down && state.items.has("spores") && !state.followed) {
         state.followed = true;
         setTimeout(() => {
-          toast("It feels like something came up with you.", 5600);
+          toast("Huh. It feels like something came up with me.", 5600, "worried");
           audio.groan();
         }, 1100);
       }
@@ -554,7 +572,6 @@ function work(forceCritical = false) {
     state.action ||
     state.modal ||
     state.ended ||
-    (state.power && !forceCritical) ||
     state.underground ||
     state.transition ||
     incident.active
@@ -584,7 +601,9 @@ function work(forceCritical = false) {
 }
 function contactCut(action) {
   if (state.ended || state.modal || incident.active) return;
-  const { stats, critical, tool, aim: point } = action;
+  const { stats, tool, aim: point } = action;
+  // No wind-up and no fanfare: some cuts simply land bigger.
+  const critical = action.critical || Math.random() < stats.critChance;
   if (
     lineBlocked(camera.position, point) ||
     camera.position.distanceTo(point) > 3.5
@@ -593,7 +612,8 @@ function contactCut(action) {
   const radius = stats.radius * (critical ? POWER.radius : 1),
     limit = stats.limit * (critical ? POWER.limit : 1);
   const targets = [
-    ...grass.near(point.x, point.z, radius),
+    // Spore-infected blades belong to the spores: cutting leaves them to wither.
+    ...grass.near(point.x, point.z, radius).filter((t) => !t.infection),
     ...flowers.near(point.x, point.z, radius),
   ]
     .sort(
@@ -613,17 +633,16 @@ function contactCut(action) {
       blades.push(target);
     }
   }
+  wildFlowers.cutNear(point.x, point.z, radius);
   audio.cut(tool, targets.length, critical);
-  if (critical) releasePower(point);
   if (!targets.length) return;
   hands.holding = tool === "hands" && blades.length > 0;
   award(blades.length);
   effects.burst(targets, critical);
+  effects.scatter(blades);
   if (flowerCut) {
     state.action = null;
     state.held = false;
-    state.power = null;
-    hands.charge = 0;
     target = null;
     clearTimeout(toastTimer);
     $("toast").classList.remove("show");
@@ -635,7 +654,7 @@ function contactCut(action) {
   pop.textContent = `+${blades.length}${critical ? "  ✦" : ""}`;
   pop.classList.remove("pop", "power");
   void pop.offsetWidth;
-  pop.classList.add(critical ? "power" : "pop");
+  pop.classList.add("pop");
   $("score").classList.remove("score-tick");
   void $("score").offsetWidth;
   $("score").classList.add("score-tick");
@@ -650,24 +669,7 @@ function contactCut(action) {
     effects.burst(blades, false, true);
     audio.spores?.();
   }
-  if (!critical && !state.power && Math.random() < stats.critChance)
-    chargePower();
   updateHUD();
-}
-// A power cut builds by itself: the hands wind up, then the next cut lands huge.
-function chargePower() {
-  state.power = { elapsed: 0 };
-  audio.powerUp(POWER.charge);
-}
-function releasePower(point) {
-  state.power = null;
-  hands.charge = 0;
-  grass.shock(point.x, point.z, 1);
-  effects.powerBurst(point.x, point.z);
-  state.kick = 1;
-  state.flash = 0.55;
-  state.hitstop = 0.07;
-  audio.whoosh();
 }
 function award(count) {
   state.score += count;
@@ -725,15 +727,15 @@ function updateSporeMeter() {
   const fill = ready ? 1 : 1 - state.sporeCooldown / total;
   $("spore-clip-rect").setAttribute("y", String(24 * (1 - fill)));
   $("spore-clip-rect").setAttribute("height", String(24 * fill));
-  $("spore-label").textContent = ready
-    ? "Spores ready"
-    : `Spores ${Math.ceil(state.sporeCooldown)}s`;
+  $("spore-label").textContent = ready ? "" : `${Math.ceil(state.sporeCooldown)}s`;
 }
 function updateHUD() {
   updateSporeMeter();
+  $("finds").textContent = `${beacons.found} / ${beacons.total}`;
   $("score").textContent = state.score.toLocaleString();
-  $("percentage").textContent =
-    `${((grass.cutCount / grass.tufts.length) * 100).toFixed(1)}%`;
+  const cleared = grass.cutCount / grass.tufts.length;
+  $("percentage").textContent = `${(cleared * 100).toFixed(1)}%`;
+  $("cleared-ring").setAttribute("stroke-dashoffset", String(56.55 * (1 - cleared)));
   const progress = upgradeProgress(state);
   $("next-upgrade").textContent = progress.available
     ? `${progress.available} upgrade${progress.available === 1 ? "" : "s"} available`
@@ -741,8 +743,8 @@ function updateHUD() {
       ? `Next upgrade in ${progress.remaining.toLocaleString()} clippings`
       : "Explore to find more skills";
   $("upgrade-label").textContent = progress.available
-    ? "Choose an upgrade"
-    : "Skill tree";
+    ? String(progress.available)
+    : "";
   $("journal-button").classList.toggle("ready", progress.available > 0);
   $("journal-button").setAttribute(
     "aria-label",
@@ -767,7 +769,8 @@ function finish(success) {
   $("end-score").textContent = state.score.toLocaleString();
   audio.eerie();
 }
-const tint = new THREE.Color();
+const tint = new THREE.Color(),
+  wispTarget = new THREE.Vector3();
 function dayUpdate(dt) {
   state.dayTime += dt;
   const p = clamp(state.dayTime / level.day.durationSeconds, 0, 1),
@@ -801,13 +804,13 @@ function dayUpdate(dt) {
   if (p > 0.58 && state.horror === 0) {
     state.horror = 1;
     audio.eerie();
-    toast("The birds have gone quiet.", 4300);
+    toast("The birds have gone quiet...", 4300, "worried");
   }
   if (p > 0.76 && state.horror === 1) {
     state.horror = 2;
     world.watcher.visible = true;
     audio.creak();
-    toast("Was that a window opening?", 4000);
+    toast("Was that a window opening?", 4000, "worried");
   }
   if (p > 0.84) world.watcher.visible = false;
   if (
@@ -817,7 +820,7 @@ function dayUpdate(dt) {
     state.restored = true;
     audio.pickup();
     toast(
-      "The garden is looking like itself again. Time to catch the bus.",
+      "Look at it! Like a real garden again. Time to catch the bus.",
       5500,
     );
   }
@@ -832,9 +835,7 @@ function frame() {
   const sessionActive =
     state.started && !state.modal && !state.ended && player.locked;
   const active = sessionActive && !incident.active && !state.transition;
-  // Hitstop: a few frames of near-stillness when a power cut lands.
-  const fxDt = state.hitstop > 0 ? dt * 0.1 : dt;
-  state.hitstop = Math.max(0, state.hitstop - dt);
+  const fxDt = dt;
   if (!state.started) {
     camera.position.set(10 + Math.sin(time * 0.035) * 0.35, 7.2, 21);
     camera.lookAt(-2, 1.1, -7);
@@ -856,19 +857,11 @@ function frame() {
       const withered = grass.update(dt, time, sporeStats(state).wither);
       if (withered.length) {
         award(withered.length);
-        effects.burst(withered, false, true);
+        // Something dark is drawn out of the dying grass, towards you.
+        for (const t of withered)
+          if (Math.random() < 0.4) effects.wisp(t.x, t.height * 0.55, t.z);
       }
-      if (state.power) {
-        state.power.elapsed += dt;
-        hands.charge = Math.min(1, state.power.elapsed / POWER.charge);
-        if (state.power.elapsed >= POWER.charge && !state.power.released) {
-          state.power.released = true;
-          hands.charge = 0;
-          work(true);
-          // Nothing to swing at (looking at the sky, a wall): the charge fizzles.
-          if (!state.action) state.power = null;
-        }
-      } else if (state.held) work();
+      if (state.held) work();
       target = findTarget();
       $("interact").hidden = !target;
       if (target) {
@@ -900,23 +893,35 @@ function frame() {
       );
     hands.update(active ? fxDt : 0, time, state.tool, active && player.moving);
   }
-  // Power-cut camera: narrow during the wind-up, punch wide on release, shake.
-  state.kick = Math.max(0, state.kick - dt * 2.3);
-  state.flash = Math.max(0, state.flash - dt * 3.2);
-  const kick = state.kick * state.kick,
-    fov = POWER.fov - hands.charge * 4.5 + kick * 11;
-  if (Math.abs(camera.fov - fov) > 0.01) {
-    camera.fov = fov;
-    camera.updateProjectionMatrix();
+
+  // The house: things dim as you near the door; a shove from it goes dark.
+  let gloom = 0;
+  if (state.started && !state.underground) {
+    const d = Math.hypot(camera.position.x - door.x, camera.position.z - door.z);
+    gloom = (1 - THREE.MathUtils.smoothstep(d, 1.6, 8)) * 0.42;
   }
-  if (kick > 0.001 && active) {
-    camera.rotation.x += (Math.random() - 0.5) * kick * 0.035;
-    camera.rotation.z += (Math.random() - 0.5) * kick * 0.03;
+  if (state.shove) {
+    const s = state.shove;
+    s.t += dt;
+    const push = Math.exp(-s.t * 3.2) * 7 * dt,
+      p = camera.position;
+    if (!player.blocked(p.x + s.x * push, p.z)) p.x += s.x * push;
+    if (!player.blocked(p.x, p.z + s.z * push)) p.z += s.z * push;
+    camera.rotation.x += Math.exp(-s.t * 5) * 0.05;
+    gloom = Math.max(gloom, 1 - THREE.MathUtils.smoothstep(s.t, 0.15, 1.3));
+    if (s.t > 1.4) state.shove = null;
   }
-  post.material.uniforms.flash.value = state.flash;
-  post.material.uniforms.warp.value = hands.charge * 0.6 + kick;
+  post.material.uniforms.gloom.value = gloom;
+  // The blackout drains colour: the glimpse reads in black, grey and gold.
+  post.material.uniforms.split.value = incident.active ? 0.02 : LOOK.split;
+  post.material.uniforms.saturation.value = incident.active
+    ? 0.55
+    : LOOK.saturation;
+  if (state.started) beacons.update(time, camera);
+  wildFlowers.time.value = time;
   incident.update(sessionActive ? dt : 0);
-  effects.update(active ? fxDt : 0);
+  wispTarget.copy(camera.position).y -= 0.35;
+  effects.update(active ? fxDt : 0, wispTarget);
   clouds.rotation.y = time * 0.001;
   world.foliage.time.value = time;
   if (state.underground) cove.update(dt, time);
@@ -965,6 +970,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("test")) {
     audio,
     incident,
     discoveries,
+    beacons,
+    wildFlowers,
     diary,
     player,
     camera,
@@ -973,7 +980,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("test")) {
     cove,
     level,
     travel,
-    chargePower,
+    toast,
     work,
     interact,
     findTarget,
@@ -1003,7 +1010,6 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("test")) {
         modal: state.modal,
         dayTime: state.dayTime,
         underground: state.underground,
-        power: !!state.power,
         drawCalls: renderer.info.render.calls,
       };
     },

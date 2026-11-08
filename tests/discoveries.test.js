@@ -7,13 +7,13 @@ import { Discoveries } from "../src/systems/discoveries.js";
 import { upgradeProgress } from "../src/systems/rules.js";
 test("next upgrade countdown respects funds, prerequisites and purchase spending", () => {
   const state = { items: new Set(), skills: {}, compost: 0 };
-  assert.deepEqual(upgradeProgress(state), { available: 0, remaining: 30 });
-  state.compost = 30;
+  assert.deepEqual(upgradeProgress(state), { available: 0, remaining: 45 });
+  state.compost = 45;
   assert.deepEqual(upgradeProgress(state), { available: 1, remaining: 0 });
   state.skills.hands = 1;
   state.compost = 0;
-  assert.equal(upgradeProgress(state).remaining, 51);
-  state.compost = 65;
+  assert.equal(upgradeProgress(state).remaining, 77);
+  state.compost = 98;
   assert.equal(upgradeProgress(state).available, 1);
   state.items.add("clippers");
   assert.equal(upgradeProgress(state).available, 2);
@@ -29,27 +29,29 @@ test("lawn is roughly twice as dense, taller, and all keepsakes have real grass 
       p.id,
     );
 });
-test("buried objects remain invisible until local grass is cleared, then stay discovered", () => {
+test("buried finds are always in the lawn; walking onto one or clearing it makes it collectable", () => {
   const grass = new Grass(new THREE.Scene(), level);
   const points = level.points
     .filter((p) => p.buried)
     .map((p) => ({
       ...p,
       position: new THREE.Vector3(...p.position),
-      object: { visible: true },
+      object: { visible: false },
     }));
   const discoveries = new Discoveries(points, grass);
-  const p = points[0];
-  discoveries.update();
-  assert.equal(p.object.visible, false);
+  const [p, q] = points;
+  // Physically present from the start, just not yet found.
+  assert.ok(points.every((x) => x.object.visible));
+  discoveries.update(new THREE.Vector3(p.position.x + 5, 1.68, p.position.z));
   assert.equal(p.revealed, false);
-  const nearby = grass.near(p.position.x, p.position.z, p.revealRadius);
-  nearby.slice(0, 5).forEach((t) => grass.remove(t));
-  discoveries.update();
-  assert.equal(p.revealed, false);
-  nearby.forEach((t) => grass.remove(t));
-  discoveries.update();
+  // Stepping right next to it finds it, grass and all.
+  discoveries.update(new THREE.Vector3(p.position.x + 0.8, 1.68, p.position.z));
   assert.equal(p.revealed, true);
-  assert.equal(p.object.visible, true);
-  assert.ok(points.slice(1).every((p) => !p.revealed));
+  assert.ok(points.slice(1).every((x) => !x.revealed));
+  // Clearing the grass over another one also reveals it.
+  grass
+    .near(q.position.x, q.position.z, q.revealRadius)
+    .forEach((t) => grass.remove(t));
+  discoveries.update();
+  assert.equal(q.revealed, true);
 });

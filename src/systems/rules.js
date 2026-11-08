@@ -197,8 +197,10 @@ export const TREE_ITEMS = [
     nodes: [[1.4, 0]],
   },
 ];
+// Scales every skill price at once. 1.5 = all upgrades 50% dearer.
+export const PRICE_MULTIPLIER = 1.5;
 export function skillCost(skill, level) {
-  return Math.round(skill.cost * (1 + level * 0.7));
+  return Math.round(skill.cost * PRICE_MULTIPLIER * (1 + level * 0.7));
 }
 export function prerequisiteMet(skill, state) {
   return (
@@ -220,10 +222,10 @@ export function sporeStats(state) {
   const reach = state.skills.spread || 0,
     rate = state.skills.sporeRate || 0;
   return {
-    cooldown: 30 * Math.pow(0.7, rate), // seconds: 30, 21, 14.7, 10.3
-    budget: 10 + reach * 22, // blades per release: 10, 32, 54, 76
-    radius: 0.45 + reach * 0.12,
-    wither: 2.6 * Math.pow(0.82, rate), // seconds for a blade to wither
+    cooldown: 18 * Math.pow(0.7, rate), // seconds: 18, 12.6, 8.8, 6.2
+    budget: 47 + reach * 58, // blades per release: 47, 105, 163, 221
+    radius: 0.6 + reach * 0.15,
+    wither: 0.6 * Math.pow(0.8, rate), // seconds for a blade to wither
   };
 }
 export function toolStats(state) {

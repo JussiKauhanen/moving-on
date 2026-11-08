@@ -128,7 +128,7 @@ try {
   s = await snapshot();
   assert.equal(s.skills.hands, 1);
   assert.equal(s.skills.critical, 1);
-  assert.equal(s.compost, 870);
+  assert.equal(s.compost, 805);
   await page.screenshot({ path: "test-results/journal.png" });
   await page.locator("#journal-panel .close").click();
   await page.waitForTimeout(200);
@@ -137,11 +137,9 @@ try {
     const g = window.__garden;
     g.teleport(-7, 11, 0, -0.4);
     g.state.cooldown = 0;
-    g.chargePower();
+    g.work(true);
   });
-  await page.waitForFunction(
-    () => !window.__garden.state.power && !window.__garden.state.action,
-  );
+  await page.waitForFunction(() => !window.__garden.state.action);
   await page.screenshot({ path: "test-results/critical.png" });
   await page.evaluate(() => {
     window.__garden.state.dayTime = 900;

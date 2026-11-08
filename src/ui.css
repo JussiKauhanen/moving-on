@@ -1,0 +1,460 @@
+/* Game UI: one voice for menus, HUD and messages. Loaded last, so it wins. */
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ink: #1c1b18;
+  --paper: #d8cfa9;
+  --cream: #f7f0dc;
+  --text: #ece6d2;
+  --muted: #8d8a7d;
+}
+#brand,
+.vignette,
+body::after {
+  display: none;
+}
+
+/* ── Title ───────────────────────────────────────────── */
+body.menu #game {
+  filter: saturate(0.9);
+}
+#title-screen {
+  left: 50%;
+  top: auto;
+  bottom: 14vh;
+  transform: translateX(-50%);
+  text-align: center;
+  color: #fff;
+  text-shadow:
+    0 2px 4px #2a234088,
+    0 2px 24px #3a2f4a99;
+}
+#title-screen h1 {
+  font: 500 clamp(72px, 9vw, 138px) / 0.9 "Caveat", cursive;
+  letter-spacing: 0;
+  margin: 0 0 6px;
+  color: #fffaf0;
+}
+#title-screen .intro-copy {
+  font-size: 13px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #fffaf0e0;
+  margin: 0 0 30px;
+}
+#title-screen #start {
+  margin: 0 auto;
+}
+#title-screen .title-controls {
+  position: static;
+  display: block;
+  margin-top: 22px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #fffaf0e6;
+  text-shadow: 0 1px 3px #2a2340cc;
+}
+
+/* ── Buttons ─────────────────────────────────────────── */
+.primary,
+#overlay .panel .primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: auto;
+  min-width: 220px;
+  padding: 14px 30px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--paper);
+  color: #2a2920;
+  font: 650 15px/1 system-ui, sans-serif;
+  letter-spacing: 0.3px;
+  box-shadow:
+    inset 0 -4px 0 #00000026,
+    0 6px 20px #0004;
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.primary:hover,
+#overlay .panel .primary:hover {
+  background: #e9e1bd;
+  transform: translateY(-2px);
+}
+.primary > span {
+  display: none;
+}
+
+/* ── Menus: pause and end of day ─────────────────────── */
+#overlay {
+  background: #14121080;
+  backdrop-filter: blur(6px);
+}
+#pause-panel,
+#end-panel {
+  width: 360px;
+  padding: 30px 30px 24px;
+  border-radius: 8px;
+  color: var(--text);
+  background:
+    radial-gradient(ellipse at 50% 30%, #2a2924 0%, var(--ink) 75%);
+  box-shadow:
+    inset 0 0 0 1px #ffffff12,
+    0 30px 90px #000c;
+  text-align: center;
+}
+#pause-panel h2,
+#end-panel h2 {
+  font: 600 13px/1 system-ui, sans-serif;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 22px;
+}
+#end-panel h2 {
+  font: 500 44px/1 "Caveat", cursive;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  margin: 6px 0 14px;
+}
+#end-panel .eyebrow {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--muted);
+}
+#end-panel p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #bdb8a7;
+}
+#end-panel .end-stat b {
+  font: 700 40px/1 system-ui, sans-serif;
+  color: var(--paper);
+}
+#end-panel .end-stat span {
+  color: var(--muted);
+}
+#pause-panel .primary {
+  width: 100%;
+  margin-top: 0;
+}
+#pause-panel .settings {
+  margin: 24px 0 14px;
+  padding-top: 18px;
+  border-top: 1px solid #ffffff14;
+  text-align: left;
+}
+#pause-panel .settings label {
+  color: #cfc9b6;
+  font-size: 13px;
+}
+#pause-panel .settings input {
+  accent-color: var(--paper);
+}
+#pause-panel .muted {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+#pause-panel .text-button {
+  color: var(--muted);
+  border-color: #ffffff22;
+  font-size: 12px;
+}
+#pause-panel .text-button:hover {
+  color: var(--text);
+}
+
+/* ── Keepsakes: a paper tag ─────────────────────────── */
+#lore-panel {
+  width: min(460px, 92vw);
+  padding: 30px 34px 26px;
+  border-radius: 3px;
+  color: #33302a;
+  background: linear-gradient(170deg, #fbf5e4, #ece1c0);
+  box-shadow:
+    0 2px 0 #d9ccaa,
+    0 30px 70px #0009;
+  transform: rotate(0.6deg);
+  animation: diary-in 0.35s ease-out;
+}
+#lore-panel .eyebrow {
+  font: 600 10px/1.4 system-ui, sans-serif;
+  letter-spacing: 2.5px;
+  color: #9c8c6c;
+}
+#lore-panel h2 {
+  font: 500 40px/1.05 "Caveat", cursive;
+  letter-spacing: 0;
+  color: #22305a;
+  margin: 8px 0 14px;
+}
+#lore-panel p {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4b463c;
+}
+#lore-panel img {
+  border-radius: 2px;
+  box-shadow: 0 6px 16px #0003;
+  transform: rotate(-1.2deg);
+}
+#overlay #lore-panel .primary {
+  margin-top: 22px;
+  background: none;
+  box-shadow: none;
+  min-width: 0;
+  padding: 0 0 2px;
+  border-radius: 0;
+  border-bottom: 2px solid #22305a55;
+  color: #22305a;
+  font: 500 24px/1.2 "Caveat", cursive;
+}
+#overlay #lore-panel .primary:hover {
+  transform: none;
+  border-bottom-color: #22305a;
+}
+#overlay .close {
+  color: #8d8a7d;
+}
+
+/* ── HUD: icons first, numbers only ───────────────────── */
+#hud,
+#hud * {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.hud-stats {
+  position: absolute;
+  top: 26px;
+  left: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: #fffaf0;
+}
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  filter: drop-shadow(0 1px 2px #2a2340aa) drop-shadow(0 0 8px #2a234055);
+}
+.hud-row b {
+  font-weight: 650;
+}
+.hud-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: currentColor;
+}
+.hud-score .hud-icon {
+  width: 28px;
+  height: 28px;
+}
+#hud #score {
+  font: 750 30px/1 system-ui, -apple-system, sans-serif !important;
+  letter-spacing: -0.5px;
+  color: #fffaf0;
+}
+#hud .score-tick {
+  animation: score-tick 0.2s ease-out;
+}
+#spore-meter {
+  margin: 0;
+  color: #fffaf0;
+}
+#spore-meter .spore-empty {
+  fill: #fffaf033;
+  stroke: #fffaf0;
+  stroke-width: 1.4;
+}
+#spore-meter .spore-full {
+  fill: #fffaf0;
+}
+#spore-meter.ready .spore-full {
+  fill: #ffd2c4;
+}
+#spore-meter.ready .hud-icon {
+  animation: spore-ready 1.4s ease-in-out infinite;
+}
+@keyframes spore-ready {
+  50% {
+    transform: scale(1.15);
+  }
+}
+#hud #journal-button {
+  position: static;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fffaf088;
+  cursor: pointer;
+}
+#hud #journal-button kbd {
+  display: none;
+  font: 600 10px/1 system-ui, sans-serif;
+  padding: 3px 5px;
+  border-radius: 3px;
+  border: 1px solid #fffaf0aa;
+  color: #fffaf0;
+  background: #2a23404d;
+}
+#hud #journal-button.ready {
+  color: #fffaf0;
+  animation: none;
+}
+#hud #journal-button.ready .hud-icon {
+  animation: spore-ready 1.2s ease-in-out infinite;
+}
+#hud #journal-button.ready kbd {
+  display: inline-block;
+}
+#hud .day-clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fffaf0;
+  filter: drop-shadow(0 1px 2px #2a2340aa) drop-shadow(0 0 8px #2a234055);
+}
+#hud .day-clock #time {
+  font: 650 18px/1 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #fffaf0;
+}
+
+/* ── The gardener speaks: avatar and speech bubble ───── */
+#toast {
+  top: auto;
+  bottom: 9vh;
+  left: 50%;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  max-width: min(560px, 90vw);
+  padding: 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  transform: translate(-50%, 18px) scale(0.92);
+  transform-origin: 30% 100%;
+  transition:
+    opacity 0.25s,
+    transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+#toast.show {
+  transform: translate(-50%, 0) scale(1);
+}
+.toast-avatar {
+  flex: none;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  border: 3px solid #fffaf0;
+  box-shadow: 0 6px 18px #2a223a55;
+  overflow: hidden;
+  background: #fdf1dc;
+}
+.toast-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#toast.talking .toast-avatar {
+  animation: avatar-bob 0.24s ease-in-out infinite alternate;
+}
+#toast.talking .smile,
+#toast.talking .gasp {
+  animation: avatar-talk 0.13s steps(2) infinite;
+  transform-origin: 32px 40px;
+}
+@keyframes avatar-bob {
+  to {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+}
+@keyframes avatar-talk {
+  50% {
+    transform: scaleY(1.9);
+  }
+}
+/* Mouth shows only while talking; worried adds a gasp and a sweat drop. */
+.toast-avatar .smile {
+  opacity: 0;
+}
+#toast.talking .smile {
+  opacity: 1;
+}
+.toast-avatar .gasp,
+.toast-avatar .sweat {
+  display: none;
+}
+#toast[data-mood="worried"] .smile {
+  display: none;
+}
+#toast[data-mood="worried"] .gasp,
+#toast[data-mood="worried"] .sweat {
+  display: block;
+}
+#toast[data-mood="worried"] .glasses circle {
+  fill: #c7612a;
+}
+.toast-bubble {
+  position: relative;
+  margin-bottom: 18px;
+  padding: 12px 18px 13px;
+  border-radius: 18px;
+  background: #fffaf0;
+  color: #34303e;
+  font: 500 25px/1.1 "Caveat", cursive;
+  box-shadow: 0 8px 22px #2a223a40;
+}
+.toast-bubble::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  bottom: 10px;
+  border: 9px solid transparent;
+  border-right-color: #fffaf0;
+  border-left: 0;
+}
+#toast[data-mood="worried"] .toast-bubble {
+  background: #ece8f2;
+  color: #3a3550;
+}
+#toast[data-mood="worried"] .toast-bubble::before {
+  border-right-color: #ece8f2;
+}
+
+#hud #spore-label {
+  font: 650 16px/1 system-ui, sans-serif;
+  color: #fffaf0;
+  letter-spacing: 0;
+}
+/* Something to buy: the skill arrow and count grow to match the score. */
+#hud #journal-button .hud-icon {
+  transition:
+    width 0.25s,
+    height 0.25s;
+}
+#hud #journal-button.ready .hud-icon {
+  width: 28px;
+  height: 28px;
+}
+#hud #journal-button.ready #upgrade-label {
+  font: 750 30px/1 system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.5px;
+  color: #fffaf0;
+}
