@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="theme-color" content="#263f36" />
+    <meta
+      name="description"
+      content="A quiet first-person gardening game. Pull the weeds, find your tools, and be gone before evening."
+    />
+    <title>Mowing On — A quiet day's work</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232b493e'/%3E%3Cpath d='M32 52Q12 31 15 12Q33 22 32 52M32 52Q33 19 52 15Q51 40 32 52' fill='%23d1d79a'/%3E%3C/svg%3E"
+    />
+    <script type="module" crossorigin src="./assets/index-CQMuP4X0.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BCzOHbip.css">
+  </head>
+  <body>
+    <canvas id="game" aria-label="First person garden game"></canvas>
+    <div class="vignette"></div>
+    <div id="flash"></div>
+    <div id="loading">
+      <span class="sprout">❧</span>
+      <p>Opening the garden gate…</p>
+    </div>
+    <header id="brand">
+      <svg viewBox="0 0 32 40" fill="none" aria-hidden="true">
+        <path
+          d="M16 37V18M16 29C4 29 3 15 3 15s13 0 13 14ZM16 22C29 22 29 6 29 6S16 8 16 22Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+      </svg>
+      <div>MOWING ON<span>A QUIET DAY’S WORK</span></div>
+    </header>
+    <section id="title-screen">
+      <div class="chapter-label"><span></span> BRIAR HOUSE · DAY ONE</div>
+      <h1>A little work.<br />A little <em>peace.</em></h1>
+      <p class="intro-copy">
+        An overgrown garden. A borrowed pair of clippers.<br />Nothing you can’t
+        put right in a day.
+      </p>
+      <button id="start" class="primary">
+        Step off the bus <span>↗</span>
+      </button>
+      <div class="title-meta">
+        <span>FIRST-PERSON GARDENING</span><i></i
+        ><span>TAKE YOUR TIME. UNTIL DUSK.</span>
+      </div>
+      <div class="title-controls">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to wander</span
+        ><span><span class="mouse-icon"></span> to look & work</span
+        ><span>Headphones recommended</span>
+      </div>
+    </section>
+    <div id="postcard">
+      <span>01 / BRIAR HOUSE</span>
+      <div>There’s still good<br />in this garden.</div>
+      <small>Let’s find it.</small>
+    </div>
+    <button id="sound-button" aria-label="Toggle sound" title="Toggle sound">
+      ♫ <span>SOUND ON</span>
+    </button>
+    <div id="hud" hidden>
+      <div class="harvest minimal-harvest">
+        <div class="score-line"><span id="score">0</span><span class="harvest-unit">blades clipped</span></div>
+        <div class="harvest-detail"><b id="percentage">0.0%</b><span>cleared</span></div>
+        <p id="next-upgrade">Next upgrade in 30 clippings</p>
+        <button id="journal-button" class="upgrade-prompt" aria-label="Open skill tree"><kbd>Tab</kbd><span id="upgrade-label">Skill tree</span></button>
+      </div>
+      <div class="day-clock minimal-clock"><span id="time">09:00</span><small>until 19:00</small></div>
+      <div id="crosshair"><i></i></div>
+      <div id="interact" hidden role="img">
+        <svg class="eye-icon" viewBox="0 0 32 32" fill="none"><path d="M3 16s5-8 13-8 13 8 13 8-5 8-13 8S3 16 3 16Z"/><circle cx="16" cy="16" r="4"/></svg>
+        <svg class="hand-icon" viewBox="0 0 40 40" fill="none"><path d="M12 32 7 22q-1-4 2-3l5 5V10q0-4 3-2v11-14q3-4 4 0v14-12q3-3 4 1v13-10q3-3 4 1v14q0 6-5 9H16Z"/></svg>
+      </div>
+      <div id="harvest-pop"></div>
+      <div id="critical" hidden>
+        <span>A PERFECT MOMENT</span>
+        <div class="critical-track">
+          <i class="sweet-zone"></i><b id="critical-marker"></b>
+        </div>
+        <small>Click as the needle crosses the gold</small>
+      </div>
+    </div>
+    <div id="flower-veil" hidden aria-hidden="true"></div>
+    <div id="arrival-fade" hidden></div>
+    <div id="day-intro" hidden>
+      <span>DAY ONE</span>
+      <h2>Mowing on.</h2>
+      <p>Briar House · 9:00 in the morning</p>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="overlay" hidden>
+      <section id="pause-panel" class="panel" hidden>
+        <span class="eyebrow">A MOMENT TO YOURSELF</span>
+        <h2>Take a breather.</h2>
+        <p>The garden can wait a moment.</p>
+        <button id="resume" class="primary">
+          Back to the garden <span>↗</span>
+        </button>
+        <div class="settings">
+          <label>Ambient music <input id="music-volume" type="range" min="0" max="100" value="55"/></label>
+          <label
+            >Sound
+            <input
+              id="volume"
+              type="range"
+              min="0"
+              max="100"
+              value="60" /></label
+          ><label
+            >Mouse sensitivity
+            <input
+              id="sensitivity"
+              type="range"
+              min="1"
+              max="10"
+              value="4" /></label
+          ><label
+            >Walking sway <input id="bob" type="checkbox" checked
+          /></label>
+        </div>
+        <p class="muted">
+          WASD · walk &nbsp; / &nbsp; Shift · walk faster<br />1 / 2 · switch
+          tools &nbsp; / &nbsp; Tab · skill tree<br />Click a hand to collect. Click an eye to read.
+        </p>
+        <button id="restart" class="text-button">Start the day again</button>
+      </section>
+      <section id="note-panel" class="panel paper" hidden>
+        <button class="close" data-close aria-label="Close note">×</button
+        ><span class="eyebrow">A NOTE ON THE SHED WALL</span>
+        <h2>Make yourself<br />at home.</h2>
+        <div class="note-copy">
+          <p>
+            The tools in here are yours to use. The clippers are a bit stiff —
+            there’s oil and a stone in the little shelter across the garden.
+          </p>
+          <p>
+            Mind the flower beds. Pull what you can. A little care makes all the
+            difference.
+          </p>
+          <p>
+            You needn’t go into the house.<br /><em
+              >No matter what you hear.</em
+            >
+          </p>
+          <p class="signature">— M.</p>
+        </div>
+        <button class="primary" data-close>
+          Fold the note <span>↗</span>
+        </button>
+      </section>
+      <section id="journal-panel" class="panel journal" hidden>
+        <button class="close" data-close aria-label="Close field notes">
+          ×
+        </button>
+        <div class="journal-heading">
+          <div>
+            <span class="eyebrow">THE GARDENER’S COMPANION</span>
+            <h2>Room to grow.</h2>
+          </div>
+          <div class="compost">
+            <b id="compost">0</b><span>clippings to spend</span>
+          </div>
+        </div>
+        <p>Small habits become second nature. Spend your clippings to learn.</p>
+        <div id="skills"></div>
+        <section id="collection" hidden><div class="collection-heading"><h3>Found in the grass</h3><span id="collection-count"></span></div><div id="collection-list"></div></section>
+        <div class="journal-footer">
+          <span id="inventory">A pair of willing hands.</span
+          ><span><kbd>TAB</kbd> Back to the garden</span>
+        </div>
+      </section>
+      <section id="lore-panel" class="panel lore-panel" hidden>
+        <button id="lore-close" class="close" aria-label="Close keepsake">×</button>
+        <span id="lore-meta" class="eyebrow"></span><h2 id="lore-title"></h2>
+        <img id="lore-art" alt="" hidden/><p id="lore-text"></p>
+        <button id="lore-back" class="primary">Put it away <span>↗</span></button>
+      </section>
+      <section id="end-panel" class="panel" hidden>
+        <span class="eyebrow" id="end-eyebrow">THE END OF A QUIET DAY</span>
+        <h2 id="end-title">Time to go.</h2>
+        <p id="end-copy"></p>
+        <div class="end-stat">
+          <b id="end-score">0</b><span>blades cleared. A little good done.</span>
+        </div>
+        <button id="again" class="primary">
+          Another quiet day <span>↗</span>
+        </button>
+      </section>
+    </div>
+  </body>
+</html>
