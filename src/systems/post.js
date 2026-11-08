@@ -3,20 +3,25 @@ import * as THREE from "three";
 // posterised colour, ordered dithering, ink outlines, split-toning, RGB fringing
 // and faint scanlines. Every knob lives in LOOK so the style is easy to tune.
 export const LOOK = {
-  pixelHeight: 405, // internal render height; lower = chunkier pixels
-  levels: 9, // colour steps per channel after tone mapping
-  dither: 0.85, // 0 = hard bands, 1 = full 4×4 ordered dither between bands
-  saturation: 1.32,
-  shadowTint: "#1d4a63", // shadows drift towards deep teal
-  highlightTint: "#ffd2c4", // highlights drift towards warm peach-pink
-  split: 0.24, // strength of the shadow/highlight split-tone
-  outline: 0.72, // ink-line strength at depth discontinuities
-  outlineColor: "#203046",
-  outlineFar: 55, // metres; outlines fade out before this distance
-  aberration: 2.1, // RGB fringe, in low-res pixels at the screen edge
-  scanlines: 0.085,
-  grain: 0.035,
-  vignette: 0.42,
+  pixelHeight: 540, // internal render height; lower = chunkier pixels
+  exposure: 1.12, // pushes skies and sunlit surfaces towards blown-out white
+  glow: 0.5, // bright areas bleed further towards white
+  sky: 1.75, // sky and haze brightness; above 1 blows them out to soft white
+  lift: 0.16, // raises the darkest tones towards liftColor (soft, milky shadows)
+  liftColor: "#7073c4",
+  levels: 48, // colour steps per channel (48 ≈ smooth)
+  dither: 0, // 0 = no dither pattern
+  saturation: 1.1,
+  shadowTint: "#3d3fa6", // shadows drift towards soft lavender-blue
+  highlightTint: "#fff0f2", // highlights drift towards pale pink-white
+  split: 0.34, // strength of the shadow/highlight split-tone
+  outline: 0.3, // ink-line strength at depth discontinuities
+  outlineColor: "#2c3060",
+  outlineFar: 40, // metres; outlines fade out before this distance
+  aberration: 2.6, // RGB fringe, in low-res pixels at the screen edge
+  scanlines: 0,
+  grain: 0.012,
+  vignette: 0.22,
 };
 const vertexShader = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
 const fragmentShader = /* glsl */ `
@@ -25,9 +30,9 @@ varying vec2 vUv;
 uniform sampler2D tColor;
 uniform sampler2D tDepth;
 uniform vec2 lowRes;
-uniform float time, exposure, levels, dither, saturation, split, outline, outlineFar;
+uniform float time, exposure, glow, lift, levels, dither, saturation, split, outline, outlineFar;
 uniform float aberration, scanlines, grain, vignette, cameraNear, cameraFar, flash, warp;
-uniform vec3 shadowTint, highlightTint, outlineColor, flashColor;
+uniform vec3 liftColor, shadowTint, highlightTint, outlineColor, flashColor;
 
 float viewDepth(vec2 uv) {
   float z = texture2D(tDepth, uv).x * 2. - 1.;
@@ -82,6 +87,10 @@ void main() {
 
   col *= exposure;
   col = toSRGB(aces(col));
+  // Overblown light: bright areas wash out towards white.
+  float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(col, vec3(1.), smoothstep(0.55, 1.0, lum) * glow);
+  col = mix(col, liftColor, lift * (1. - smoothstep(0., 0.75, lum)));
   col = mix(col, col * outlineColor * 1.6, edge * outline);
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(vec3(l), col, saturation);
@@ -124,6 +133,9 @@ export class RetroPost {
         lowRes: { value: new THREE.Vector2(4, 4) },
         time: { value: 0 },
         exposure: { value: 1 },
+        glow: { value: look.glow },
+        lift: { value: look.lift },
+        liftColor: { value: new THREE.Color(look.liftColor) },
         cameraNear: { value: camera.near },
         cameraFar: { value: camera.far },
         levels: { value: look.levels },
@@ -145,7 +157,7 @@ export class RetroPost {
       },
     });
     // The UI colour-picker values are authored in sRGB; the grade runs in display space.
-    for (const key of ["shadowTint", "highlightTint", "outlineColor"])
+    for (const key of ["shadowTint", "highlightTint", "outlineColor", "liftColor"])
       this.material.uniforms[key].value.set(look[key]).convertLinearToSRGB();
     this.material.uniforms.flashColor.value.convertLinearToSRGB();
     const geometry = new THREE.BufferGeometry();
@@ -184,7 +196,7 @@ export class RetroPost {
     const u = this.material.uniforms,
       r = this.renderer;
     u.time.value = time;
-    u.exposure.value = r.toneMappingExposure;
+    u.exposure.value = r.toneMappingExposure * this.look.exposure;
     u.cameraNear.value = this.camera.near;
     u.cameraFar.value = this.camera.far;
     r.setRenderTarget(null);

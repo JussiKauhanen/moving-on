@@ -11,7 +11,7 @@ import { Player } from "./systems/player.js";
 import { Effects } from "./systems/effects.js";
 import { Discoveries } from "./systems/discoveries.js";
 import { GameAudio } from "./systems/audio.js";
-import { RetroPost } from "./systems/post.js";
+import { RetroPost, LOOK } from "./systems/post.js";
 import { Cove, COVE } from "./world/cove.js";
 import { renderSkillTree } from "./ui/skill-tree.js";
 import { treeIcon } from "./ui/tree-icons.js";
@@ -93,11 +93,12 @@ const sky = new THREE.Mesh(
     uniforms: {
       top: { value: new THREE.Color(palette.morning.top) },
       bottom: { value: new THREE.Color(palette.morning.bottom) },
+      brightness: { value: LOOK.sky },
     },
     vertexShader:
       "varying vec3 vPosition; void main(){vPosition=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
     fragmentShader:
-      "varying vec3 vPosition; uniform vec3 top; uniform vec3 bottom; void main(){float t=smoothstep(-5.,95.,vPosition.y);gl_FragColor=vec4(mix(bottom,top,t),1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}",
+      "varying vec3 vPosition; uniform vec3 top; uniform vec3 bottom; uniform float brightness; void main(){float t=smoothstep(-5.,95.,vPosition.y);gl_FragColor=vec4(mix(bottom,top,t)*brightness,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}",
   }),
 );
 scene.add(sky);
@@ -326,8 +327,7 @@ addEventListener("keydown", (e) => {
   }
   if (state.modal === "diary" && ["KeyJ", "KeyE", "Space"].includes(e.code)) {
     e.preventDefault();
-    if (diary.writing) diary.finish();
-    else resume();
+    resume();
     return;
   }
   if (e.code === "Escape" && state.modal && state.modal !== "pause") {
@@ -781,7 +781,11 @@ function dayUpdate(dt) {
   sky.material.uniforms.bottom.value
     .set(m.bottom)
     .lerp(tint.set(d.bottom), dusk);
-  scene.fog.color.set(m.fog).lerp(tint.set(d.fog), dusk);
+  // Haze is as bright as the sky behind it, so distance washes out.
+  scene.fog.color
+    .set(m.fog)
+    .lerp(tint.set(d.fog), dusk)
+    .multiplyScalar(LOOK.sky);
   scene.background.copy(scene.fog.color);
   cloudMat.color.set(m.cloud).lerp(tint.set(d.cloud), dusk);
   sun.color.set(m.sun).lerp(tint.set(d.sun), dusk);

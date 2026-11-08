@@ -13,15 +13,15 @@ export default {
   // Sky, haze and light, blended from morning to dusk across the day.
   palette: {
     morning: {
-      top: "#d9aee6",
-      bottom: "#ffd99c",
-      fog: "#f4bfcd",
-      sun: "#ffe6c8",
-      sunIntensity: 2.6,
-      hemiSky: "#ffeaf2",
-      hemiGround: "#2f6676",
-      hemiIntensity: 1.55,
-      cloud: "#fde6ea",
+      top: "#f2dcf2",
+      bottom: "#fff3df",
+      fog: "#f8e1e8",
+      sun: "#fff0e0",
+      sunIntensity: 2.7,
+      hemiSky: "#fff0f6",
+      hemiGround: "#5d5fa8",
+      hemiIntensity: 1.6,
+      cloud: "#ffffff",
     },
     dusk: {
       top: "#4c4486",

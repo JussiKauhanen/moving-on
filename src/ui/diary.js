@@ -1,6 +1,5 @@
-// The gardener's diary: entries are written out by hand, with a pen scratch
-// for every few letters. Click the page to finish writing at once.
-const CHARS_PER_SECOND = 42;
+// The gardener's diary: each new entry appears on the page while a short burst
+// of pen-scratching plays. Click the page to stop the sound early.
 export class Diary {
   constructor({ panel, audio, entries }) {
     this.panel = panel;
@@ -66,55 +65,23 @@ export class Diary {
           queue.push({ p, text });
         }
     }
-    if (!animate) {
-      for (const q of queue) {
-        if (q.p) q.p.textContent = q.text;
-        else q.slip.classList.add("shown");
-      }
-      return;
+    // The page appears complete; only the sound of writing plays out.
+    for (const q of queue) {
+      if (q.p) q.p.textContent = q.text;
+      else q.slip.classList.add("shown");
     }
-    let item = 0,
-      char = 0,
-      last = performance.now(),
-      carry = 0;
-    this.finishNow = () => {
-      for (const q of queue) {
-        if (q.p) q.p.textContent = q.text;
-        else q.slip.classList.add("shown");
-      }
-    };
+    if (!animate) return;
+    const letters = queue.reduce((n, q) => n + (q.text?.length || 0), 0),
+      strokes = Math.min(70, Math.round(letters / 5));
+    let i = 0;
     this.timer = setInterval(() => {
-      const now = performance.now();
-      carry += ((now - last) / 1000) * CHARS_PER_SECOND;
-      last = now;
-      while (carry >= 1 && item < queue.length) {
-        const q = queue[item];
-        if (q.slip) {
-          // Someone else's note is taped in, not written.
-          q.slip.classList.add("shown");
-          this.audio.pageTurn?.();
-          item++;
-          carry = -10; // a small pause to look at it
-          continue;
-        }
-        char++;
-        carry--;
-        q.p.textContent = q.text.slice(0, char);
-        const c = q.text[char - 1];
-        if (c && c !== " " && char % 2 === 0) this.audio.scratch?.();
-        if (char >= q.text.length) {
-          item++;
-          char = 0;
-          carry -= 6; // lift the pen between paragraphs
-        }
-      }
-      if (item >= queue.length) this.stop();
-    }, 30);
+      // Bursts of scratches with small gaps, like words.
+      if (i % 5 !== 4) this.audio.scratch?.();
+      if (++i >= strokes) this.stop();
+    }, 55);
   }
   finish() {
-    if (!this.timer) return;
     this.stop();
-    this.finishNow?.();
   }
   stop() {
     clearInterval(this.timer);

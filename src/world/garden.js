@@ -279,7 +279,7 @@ export function buildGarden(scene, level) {
   }
   function tree(x, z, s = 1, far = false) {
     const height = (5 + random() * 2) * s;
-    const trunk = far ? "#3f5866" : "#3d4656";
+    const trunk = far ? "#6a6f9a" : "#5a5f86";
     beam(root, [x, 0, z], [x + 0.2, height, z], 0.2 * s, trunk);
     for (let i = 0; i < 7; i++) {
       let a = i * 2.4,
