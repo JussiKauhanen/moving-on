@@ -17,6 +17,8 @@ try {
   await page.goto("http://127.0.0.1:5173/?test=1");
   await page.locator("#loading").waitFor({ state: "hidden" });
   await page.locator("#start").click();
+  await page.locator("#diary-panel .diary-close").click({ timeout: 15000 });
+  await page.waitForTimeout(300);
   await page.waitForTimeout(300);
   // Approach buried objects at eye-level aim; harvest through the ordinary work action.
   for (const id of ["charm"]) {

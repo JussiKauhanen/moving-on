@@ -8,6 +8,7 @@ import {
   canBuy,
   SKILLS,
   skillCost,
+  sporeStats,
 } from "../src/systems/rules.js";
 import { Grass } from "../src/world/grass.js";
 import { Player } from "../src/systems/player.js";
@@ -89,10 +90,40 @@ test("infection withers living grass and credits each tuft once", () => {
   grass.infect(t.x, t.z, 0.4);
   const initial = grass.infected.size;
   assert.ok(initial > 0);
-  const removed = grass.update(3, 3, 0);
+  const removed = grass.update(3, 3, 2.6);
   assert.equal(removed.length, initial);
   assert.equal(grass.cutCount, initial);
   assert.ok(removed.every((t) => t.cut));
+});
+test("a spore release spreads, then always burns out at its budget", () => {
+  const grass = new Grass(new THREE.Scene(), level),
+    t = grass.tufts[9000];
+  grass.infect(t.x, t.z, 0.3, 25);
+  let total = 0;
+  for (let i = 0; i < 60 && (grass.infected.size || !total); i++)
+    total += grass.update(1, i, 0.5).length;
+  assert.equal(total, 25);
+  assert.equal(grass.infected.size, 0);
+});
+test("spore skills widen the spread and shorten the cooldown", () => {
+  const s = state();
+  const base = sporeStats(s);
+  s.skills.spread = 2;
+  s.skills.sporeRate = 2;
+  const grown = sporeStats(s);
+  assert.ok(grown.budget > base.budget * 3);
+  assert.ok(grown.cooldown < base.cooldown * 0.6);
+  assert.ok(grown.wither < base.wither);
+});
+test("chained skills unlock tile by tile", () => {
+  const s = state(),
+    roots = SKILLS.find((k) => k.id === "roots");
+  s.compost = 1000;
+  s.skills.hands = 2;
+  assert.equal(canBuy(roots, s), false);
+  s.skills.hands = 3;
+  assert.equal(canBuy(roots, s), true);
+  for (const skill of SKILLS) assert.equal(skill.nodes.length, skill.max);
 });
 test("collision blocks house, fence and closed gate while allowing open gate", () => {
   const p = Object.create(Player.prototype);

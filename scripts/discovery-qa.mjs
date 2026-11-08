@@ -7,10 +7,10 @@ const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];p
 async function aim(id,x,z){await page.evaluate(({id,x,z})=>{const g=window.__garden,p=g.world.interactables.find(p=>p.id===id).position;g.teleport(x,z,Math.atan2(x-p.x,z-p.z),Math.atan2(p.y-1.68,Math.hypot(p.x-x,p.z-z)));},{id,x,z});await page.waitForTimeout(100);}
 async function click(){await page.mouse.down();await page.mouse.up();await page.waitForTimeout(100);}
 try{
- await page.goto('http://127.0.0.1:5173/?test=1');await page.locator('#loading').waitFor({state:'hidden'});await page.locator('#start').click();await page.waitForTimeout(5500);
+ await page.goto('http://127.0.0.1:5173/?test=1');await page.locator('#loading').waitFor({state:'hidden'});await page.locator('#start').click();await page.waitForTimeout(5500);await page.locator('#diary-panel .diary-close').click({timeout:15000});await page.waitForTimeout(300);
  assert.ok(await page.evaluate(()=>window.__garden.grass.tufts.length>30000));
  await page.keyboard.down('KeyW');await page.waitForTimeout(1500);await page.keyboard.up('KeyW');await click();assert.ok(await page.evaluate(()=>window.__garden.world.gateOpen));
- await aim('note',-12,-10);assert.ok(await page.locator('#interact').evaluate(e=>e.classList.contains('is-eye')));await click();assert.equal(await page.evaluate(()=>window.__garden.state.modal),'note');await page.locator('#note-panel .primary').click();await page.waitForTimeout(200);
+ await aim('note',-12,-10);assert.ok(await page.locator('#interact').evaluate(e=>e.classList.contains('is-eye')));await click();assert.equal(await page.evaluate(()=>window.__garden.state.modal),'diary');await page.locator('#diary-panel .diary-close').click();await page.waitForTimeout(200);
  await aim('clippers',-11.2,-9.4);assert.equal(await page.locator('#interact').evaluate(e=>e.classList.contains('is-eye')),false);await click();assert.ok(await page.evaluate(()=>window.__garden.state.items.has('clippers')));
  await page.evaluate(()=>window.__garden.teleport(-3,10,0,-.3));await page.screenshot({path:'test-results/gloves-lush-garden.png'});
  // Hidden means no model and no targeting, even when looking exactly at the prop.

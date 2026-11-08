@@ -179,29 +179,59 @@ export class Grass {
     this.mesh.instanceColor.needsUpdate = true;
     this.mesh.instanceMatrix.needsUpdate = true;
   }
-  infect(x, z, r) {
-    for (const t of this.near(x, z, r)) {
-      if (!t.infection) {
-        t.infection = 0.01;
-        this.infected.add(t);
-      }
+  // Start a spore outbreak. It can only ever wither `budget` blades in total:
+  // the first patch, then neighbours as each blade dies, until the budget is spent.
+  infect(x, z, r, budget = 12, seeds = 5) {
+    const outbreak = { left: budget };
+    let planted = 0;
+    const list = this.near(x, z, r)
+      .filter((t) => !t.infection)
+      .sort(
+        (a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z),
+      );
+    // Only a few blades catch at first; the rest is reached by creeping outward.
+    for (const t of list) {
+      if (outbreak.left <= 0 || planted++ >= seeds) break;
+      this.seed(t, outbreak);
     }
+    return outbreak;
   }
-  update(dt, time, spread) {
+  seed(t, outbreak) {
+    outbreak.left--;
+    t.infection = 0.001;
+    t.outbreak = outbreak;
+    this.infected.add(t);
+  }
+  // `wither` is the seconds a blade takes to die once infected.
+  update(dt, time, wither = 2.6) {
     this.time.value = time;
     const removed = [];
+    let recolour = false;
     for (const t of [...this.infected]) {
-      t.infection += dt * (1 + spread * 0.4);
-      if (t.infection > 2.5) {
+      t.infection += dt / wither;
+      if (t.infection >= 1) {
+        const outbreak = t.outbreak;
         this.remove(t);
         removed.push(t);
-        if (Math.random() < 0.46 + spread * 0.12)
-          this.infect(t.x, t.z, 0.48 + spread * 0.12);
-      } else if (t.infection > 1) {
+        // Pass it on to up to two of the nearest healthy blades.
+        if (outbreak && outbreak.left > 0) {
+          const next = this.near(t.x, t.z, 0.42)
+            .filter((n) => !n.infection)
+            .sort(
+              (a, b) =>
+                Math.hypot(a.x - t.x, a.z - t.z) -
+                Math.hypot(b.x - t.x, b.z - t.z),
+            )
+            .slice(0, 2);
+          for (const n of next) if (outbreak.left > 0) this.seed(n, outbreak);
+        }
+      } else if (t.infection > 0.4 && !t.tinted) {
+        t.tinted = true;
         this.mesh.setColorAt(t.index, new THREE.Color("#6d6378"));
-        this.mesh.instanceColor.needsUpdate = true;
+        recolour = true;
       }
     }
+    if (recolour) this.mesh.instanceColor.needsUpdate = true;
     return removed;
   }
 }

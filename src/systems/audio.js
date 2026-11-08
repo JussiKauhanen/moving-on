@@ -260,52 +260,68 @@ export class GameAudio {
       hissGain.disconnect();
     };
   }
-  // Power cut: a rising charge while the hands wind up...
+  // Soft-clipping curve for heavier, gritty layers.
+  grit(amount = 3) {
+    if (this._grit?.amount === amount) return this._grit.curve;
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) {
+      const x = (i / 1023) * 2 - 1;
+      curve[i] = Math.tanh(x * amount);
+    }
+    this._grit = { amount, curve };
+    return curve;
+  }
+  // Power cut wind-up: a low, swelling growl, like something heavy being drawn back.
   powerUp(duration = 0.34) {
     if (!this.ctx) return;
     const ctx = this.ctx,
       now = ctx.currentTime,
-      out = ctx.createGain(),
-      filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(400, now);
-    filter.frequency.exponentialRampToValueAtTime(4200, now + duration);
+      end = now + duration,
+      lp = ctx.createBiquadFilter(),
+      shaper = ctx.createWaveShaper(),
+      out = ctx.createGain();
+    lp.type = "lowpass";
+    lp.Q.value = 4;
+    lp.frequency.setValueAtTime(110, now);
+    lp.frequency.exponentialRampToValueAtTime(520, end);
+    shaper.curve = this.grit(2.5);
     out.gain.setValueAtTime(0.0001, now);
-    out.gain.exponentialRampToValueAtTime(0.16, now + duration * 0.9);
-    out.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.08);
-    filter.connect(out).connect(this.master);
-    for (const [type, detune] of [
-      ["sawtooth", 0],
-      ["square", 7],
-      ["sine", -12],
+    out.gain.exponentialRampToValueAtTime(0.32, end - 0.03);
+    out.gain.exponentialRampToValueAtTime(0.0001, end + 0.06);
+    lp.connect(shaper).connect(out).connect(this.master);
+    for (const [type, f, detune] of [
+      ["sawtooth", 46, 0],
+      ["sawtooth", 46, 14],
+      ["sine", 34, 0],
     ]) {
       const o = ctx.createOscillator();
       o.type = type;
       o.detune.value = detune;
-      o.frequency.setValueAtTime(140, now);
-      o.frequency.exponentialRampToValueAtTime(880, now + duration);
-      o.connect(filter);
+      o.frequency.setValueAtTime(f, now);
+      o.frequency.exponentialRampToValueAtTime(f * 1.6, end);
+      o.connect(lp);
       o.start(now);
-      o.stop(now + duration + 0.1);
+      o.stop(end + 0.1);
     }
     if (this.noiseBuffer) {
+      // Ground-rumble underneath, tightening as it builds.
       const n = ctx.createBufferSource(),
-        bp = ctx.createBiquadFilter(),
+        f = ctx.createBiquadFilter(),
         g = ctx.createGain();
-      n.buffer = this.snipBuffer;
-      bp.type = "bandpass";
-      bp.Q.value = 2;
-      bp.frequency.setValueAtTime(600, now);
-      bp.frequency.exponentialRampToValueAtTime(5000, now + duration);
+      n.buffer = this.noiseBuffer;
+      n.loop = true;
+      f.type = "lowpass";
+      f.frequency.setValueAtTime(180, now);
+      f.frequency.exponentialRampToValueAtTime(700, end);
       g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(0.12, now + duration);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.05);
-      n.connect(bp).connect(g).connect(this.master);
+      g.gain.exponentialRampToValueAtTime(0.9, end);
+      g.gain.exponentialRampToValueAtTime(0.0001, end + 0.05);
+      n.connect(f).connect(g).connect(this.master);
       n.start(now);
-      n.stop(now + duration + 0.1);
+      n.stop(end + 0.1);
     }
   }
-  // ...then a big low thump and a wide whoosh as the grass is thrown outward.
+  // Release: a deep body-hit, a gritty crunch, and a low heavy whoosh outward.
   whoosh() {
     if (!this.ctx || !this.snipBuffer) return;
     const ctx = this.ctx,
@@ -313,13 +329,31 @@ export class GameAudio {
     const thump = ctx.createOscillator(),
       tg = ctx.createGain();
     thump.type = "sine";
-    thump.frequency.setValueAtTime(120, now);
-    thump.frequency.exponentialRampToValueAtTime(38, now + 0.35);
-    tg.gain.setValueAtTime(0.5, now);
-    tg.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+    thump.frequency.setValueAtTime(95, now);
+    thump.frequency.exponentialRampToValueAtTime(28, now + 0.55);
+    tg.gain.setValueAtTime(0.0001, now);
+    tg.gain.exponentialRampToValueAtTime(0.75, now + 0.008);
+    tg.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
     thump.connect(tg).connect(this.master);
     thump.start(now);
-    thump.stop(now + 0.5);
+    thump.stop(now + 0.75);
+    // Crunch: clipped noise, dark and short.
+    const crunch = ctx.createBufferSource(),
+      cf = ctx.createBiquadFilter(),
+      cs = ctx.createWaveShaper(),
+      cg = ctx.createGain();
+    crunch.buffer = this.snipBuffer;
+    cf.type = "lowpass";
+    cf.frequency.setValueAtTime(1800, now);
+    cf.frequency.exponentialRampToValueAtTime(220, now + 0.25);
+    cs.curve = this.grit(6);
+    cg.gain.setValueAtTime(0.0001, now);
+    cg.gain.exponentialRampToValueAtTime(0.22, now + 0.004);
+    cg.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+    crunch.connect(cf).connect(cs).connect(cg).connect(this.master);
+    crunch.start(now, Math.random() * 0.5);
+    crunch.stop(now + 0.32);
+    // The grass thrown outward: low, wide, and slow to settle.
     for (const side of [-1, 1]) {
       const n = ctx.createBufferSource(),
         bp = ctx.createBiquadFilter(),
@@ -327,23 +361,45 @@ export class GameAudio {
         pan = ctx.createStereoPanner();
       n.buffer = this.snipBuffer;
       n.loop = true;
-      n.playbackRate.value = side < 0 ? 0.9 : 1.1;
+      n.playbackRate.value = side < 0 ? 0.85 : 1;
       bp.type = "bandpass";
-      bp.Q.value = 0.9;
-      bp.frequency.setValueAtTime(3200, now);
-      bp.frequency.exponentialRampToValueAtTime(260, now + 0.9);
+      bp.Q.value = 0.8;
+      bp.frequency.setValueAtTime(1100, now);
+      bp.frequency.exponentialRampToValueAtTime(140, now + 0.9);
       g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(0.32, now + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
+      g.gain.exponentialRampToValueAtTime(0.3, now + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
       pan.pan.setValueAtTime(0, now);
-      pan.pan.linearRampToValueAtTime(side * 0.9, now + 0.8);
+      pan.pan.linearRampToValueAtTime(side * 0.85, now + 0.8);
       n.connect(bp).connect(g).connect(pan).connect(this.master);
       n.start(now, Math.random());
-      n.stop(now + 1.1);
+      n.stop(now + 1.15);
     }
-    [523, 784, 1046].forEach((f, i) =>
-      setTimeout(() => this.tone(f, 0.32, 0.05, "triangle", f * 1.01), 40 + i * 55),
-    );
+  }
+  // Pen on paper: one short, dry scratch per stroke.
+  scratch() {
+    if (!this.ctx || !this.snipBuffer) return;
+    const ctx = this.ctx,
+      now = ctx.currentTime,
+      n = ctx.createBufferSource(),
+      bp = ctx.createBiquadFilter(),
+      g = ctx.createGain(),
+      length = 0.03 + Math.random() * 0.05;
+    n.buffer = this.snipBuffer;
+    n.playbackRate.value = 0.6 + Math.random() * 0.5;
+    bp.type = "bandpass";
+    bp.Q.value = 1.4;
+    bp.frequency.value = 2600 + Math.random() * 2200;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.05 + Math.random() * 0.04, now + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    n.connect(bp).connect(g).connect(this.master);
+    n.start(now, Math.random() * 0.8);
+    n.stop(now + length + 0.01);
+  }
+  pageTurn() {
+    this.noise(0.18, 0.18, 1800);
+    setTimeout(() => this.noise(0.12, 0.08, 3000), 90);
   }
   // Looking into the well: something breathes a word you can't make out.
   wellLook() {
@@ -398,6 +454,12 @@ export class GameAudio {
       o.start(t);
       o.stop(t + 0.2);
     });
+  }
+  // Spores released: a soft, wet puff and a low settle.
+  spores() {
+    this.noise(0.35, 0.25, 300);
+    this.tone(150, 0.5, 0.05, "sine", 70);
+    setTimeout(() => this.noise(0.5, 0.08, 2200), 80);
   }
   rope() {
     this.tone(210, 0.5, 0.05, "triangle", 150);

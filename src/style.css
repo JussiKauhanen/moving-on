@@ -1441,3 +1441,34 @@ body.playing #sound-button {
     transform: scale(1) translateY(-40px);
   }
 }
+/* Spore cooldown: a mushroom that fills from the bottom as spores recover. */
+#spore-meter {
+  --fill: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #d9b6ad;
+}
+#spore-meter svg {
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+}
+#spore-meter .spore-empty {
+  fill: #2a1a1c99;
+  stroke: #d9b6ad;
+  stroke-width: 1.2;
+}
+#spore-meter .spore-full {
+  fill: #b8574a;
+}
+#spore-meter.ready .spore-full {
+  fill: #e06a55;
+  filter: drop-shadow(0 0 4px #ff8a6a);
+}
+#spore-meter.ready {
+  color: #ffd2c4;
+}

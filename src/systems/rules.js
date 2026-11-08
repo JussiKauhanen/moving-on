@@ -48,117 +48,183 @@ export function isPlantable(x, z, level) {
     return false;
   return true;
 }
-// The skill tree grows from this centre node; it is decorative and always owned.
+// ─── Skill tree ──────────────────────────────────────────────────────────────
+// Every skill and price lives here. Each level of a skill is its own tile in the
+// tree; `nodes` lists those tiles' positions (x right, y down, in tile units from
+// the skull at the centre). `parentLevel` is how far the parent must be learned.
+// `badge` is the small corner mark: speed, more, chance, reach, power.
 export const SKILL_ROOT = {
   id: "gardener",
   name: "The gardener",
   branch: "Origin",
-  description:
-    "A pair of willing hands and a long day ahead. Every habit grows from here.",
-  tree: [0, 0],
+  description: "A pair of willing hands and a long day ahead.",
+  nodes: [[0, 0]],
 };
 export const SKILLS = [
   {
-    id: "roots",
-    tree: [-3, -1.55], // skill-tree position, in node cells from the centre
-    name: "Light fingers",
-    icon: "⌁",
-    branch: "Hands",
-    description:
-      "Another 12% less time between pulls. Still one blade, one hand at a time.",
-    cost: 80,
-    max: 1,
-    parent: "hands",
-  },
-  {
-    id: "reach",
-    tree: [3, -1.55],
-    name: "A wider sweep",
-    icon: "⌁",
-    branch: "Tools",
-    description: "Cut 3 more blades and reach 8 cm wider with each level.",
-    cost: 110,
-    max: 3,
-    parent: "clipping",
-    needs: "clippers",
-  },
-  {
     id: "hands",
-    tree: [-1.5, -0.85],
     name: "A practiced hand",
-    icon: "✋",
-    branch: "Hands",
-    description: "30% less time between pulls. Every little blade counts.",
+    branch: "grass",
+    badge: "speed",
+    description: "30% less time between pulls.",
     cost: 30,
     max: 3,
+    nodes: [
+      [-1.1, -0.9],
+      [-1.5, -1.8],
+      [-1.9, -2.7],
+    ],
   },
   {
-    id: "clipping",
-    tree: [1.5, -0.85],
-    name: "Find your rhythm",
-    icon: "✂",
-    branch: "Tools",
-    description: "22% less time between snips with each level.",
-    cost: 65,
-    max: 3,
-    needs: "clippers",
+    id: "roots",
+    name: "Light fingers",
+    branch: "grass",
+    badge: "speed",
+    description: "Another 12% less time between pulls.",
+    cost: 90,
+    max: 1,
+    parent: "hands",
+    parentLevel: 3,
+    nodes: [[-2.3, -3.6]],
   },
   {
     id: "critical",
-    tree: [-1.5, 0.85],
     name: "A perfect moment",
-    icon: "✧",
-    branch: "Instinct",
+    branch: "grass",
+    badge: "power",
     description:
-      "Each cut has a 7% chance to build into a power cut: a sweeping 3× cut that blasts the grass outward.",
+      "Each cut has a 7% chance to build into a power cut: a 3× cut that blasts the grass outward.",
     cost: 100,
     max: 1,
+    nodes: [[0, -1.2]],
   },
   {
     id: "luck",
-    tree: [-3, 1.55],
     name: "Trust your instinct",
-    icon: "☼",
-    branch: "Instinct",
-    description: "+6% power-cut chance per level.",
+    branch: "grass",
+    badge: "chance",
+    description: "+6% power-cut chance.",
     cost: 160,
     max: 3,
     parent: "critical",
+    nodes: [
+      [0, -2.1],
+      [0, -3],
+      [0, -3.9],
+    ],
+  },
+  {
+    id: "clipping",
+    name: "Find your rhythm",
+    branch: "grass",
+    badge: "speed",
+    description: "22% less time between snips.",
+    cost: 65,
+    max: 3,
+    needs: "clippers",
+    nodes: [
+      [1.1, -0.9],
+      [1.5, -1.8],
+      [1.9, -2.7],
+    ],
+  },
+  {
+    id: "reach",
+    name: "A wider sweep",
+    branch: "grass",
+    badge: "more",
+    description: "Each snip cuts 3 more blades and reaches 8 cm wider.",
+    cost: 110,
+    max: 3,
+    parent: "clipping",
+    parentLevel: 3,
+    needs: "clippers",
+    nodes: [
+      [2.3, -3.6],
+      [2.7, -4.5],
+      [3.1, -5.4],
+    ],
   },
   {
     id: "spores",
-    tree: [1.5, 0.85],
     name: "Something spreading",
-    icon: "❋",
-    branch: "Nature",
+    branch: "spore",
+    badge: null,
     description:
-      "Clipping infects nearby grass. It slowly withers and spreads.",
+      "Your cuts release spores. They wither a small patch, then rest before they can spread again.",
     cost: 140,
     max: 1,
     needs: "spores",
+    nodes: [[-1.4, 0]],
   },
   {
     id: "spread",
-    tree: [3, 1.55],
     name: "Deep roots",
-    icon: "⌘",
-    branch: "Nature",
-    description: "The spores spread farther and wither faster.",
+    branch: "spore",
+    badge: "reach",
+    description: "Each release spreads much farther before it burns out.",
     cost: 200,
-    max: 2,
+    max: 3,
     parent: "spores",
+    nodes: [
+      [-2.4, -0.35],
+      [-3.4, -0.55],
+      [-4.4, -0.65],
+    ],
+  },
+  {
+    id: "sporeRate",
+    name: "Restless spores",
+    branch: "spore",
+    badge: "speed",
+    description: "Spores are ready again sooner, and wither grass faster.",
+    cost: 180,
+    max: 3,
+    parent: "spores",
+    nodes: [
+      [-2.4, 0.65],
+      [-3.4, 0.95],
+      [-4.4, 1.15],
+    ],
+  },
+];
+// Found objects that show in the tree as fixed tiles.
+export const TREE_ITEMS = [
+  {
+    id: "charm",
+    name: "Brass cricket",
+    description: "+3% power-cut chance once power cuts are learned.",
+    nodes: [[1.4, 0]],
   },
 ];
 export function skillCost(skill, level) {
   return Math.round(skill.cost * (1 + level * 0.7));
 }
+export function prerequisiteMet(skill, state) {
+  return (
+    (!skill.parent ||
+      (state.skills[skill.parent] || 0) >= (skill.parentLevel || 1)) &&
+    (!skill.needs || state.items.has(skill.needs))
+  );
+}
 export function canBuy(skill, state) {
   return (
     (state.skills[skill.id] || 0) < skill.max &&
     state.compost >= skillCost(skill, state.skills[skill.id] || 0) &&
-    (!skill.parent || state.skills[skill.parent] > 0) &&
-    (!skill.needs || state.items.has(skill.needs))
+    prerequisiteMet(skill, state)
   );
+}
+// Spores: a release on the next cut, then a cooldown. Each release spreads to
+// at most `budget` blades, so it always burns out; skills widen and quicken it.
+export function sporeStats(state) {
+  const reach = state.skills.spread || 0,
+    rate = state.skills.sporeRate || 0;
+  return {
+    cooldown: 30 * Math.pow(0.7, rate), // seconds: 30, 21, 14.7, 10.3
+    budget: 10 + reach * 22, // blades per release: 10, 32, 54, 76
+    radius: 0.45 + reach * 0.12,
+    wither: 2.6 * Math.pow(0.82, rate), // seconds for a blade to wither
+  };
 }
 export function toolStats(state) {
   const clipping = state.tool === "clippers";
@@ -190,9 +256,7 @@ export function toolStats(state) {
 export function upgradeProgress(state) {
   const eligible = SKILLS.filter(
     (skill) =>
-      (state.skills[skill.id] || 0) < skill.max &&
-      (!skill.parent || state.skills[skill.parent] > 0) &&
-      (!skill.needs || state.items.has(skill.needs)),
+      (state.skills[skill.id] || 0) < skill.max && prerequisiteMet(skill, state),
   );
   const available = eligible.filter((skill) => canBuy(skill, state)).length;
   const remaining = eligible.length

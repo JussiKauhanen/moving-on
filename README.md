@@ -38,6 +38,10 @@ Spore-infected grass darkens, withers, and can spread to neighboring blades. Wit
 
 The day lasts 18 active minutes, from 09:00 to 19:00. Restore 90% of the lawn and leave through the gate for the good ending. Sunset also ends the day. Small changes in the soundscape and house appear later in the afternoon. Progress is session-only: reloading starts a fresh day. The farm/wheat level is not implemented yet.
 
+## Diary
+
+Story beats appear as handwritten diary pages (`src/ui/diary.js`), written out live with a quiet pen-scratch sound; click the page to finish writing at once. The first entry opens a few seconds after arriving; reading the shed note writes the second, with M.'s note taped in. **J** reopens the diary, and the arrows turn back through earlier pages. Entries are plain data in `src/levels/garden-diary.js`. Handwriting is Caveat (SIL OFL 1.1, bundled in `src/fonts/`).
+
 ## Look
 
 The scene renders to a small internal buffer and is upscaled by one post pass (`src/systems/post.js`): fitted ACES tone mapping, a teal-shadow / peach-highlight split tone, posterised colour with 4×4 ordered dithering, depth-based ink outlines, radial RGB fringing, faint scanlines, grain and vignette. All values are in `LOOK` at the top of that file (`pixelHeight` sets pixel size). The sky, haze and light colours for morning and dusk are in `palette` in `src/levels/garden.js`. Trees use painterly alpha-cut leaf cards (`src/world/foliage.js`). The pause menu has a "Painted retro look" toggle.

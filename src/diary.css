@@ -1,0 +1,158 @@
+/* The gardener's diary: a lined page, handwritten in blue ink. */
+@font-face {
+  font-family: "Caveat";
+  src: url("./fonts/caveat-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Caveat";
+  src: url("./fonts/caveat-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+#diary-panel {
+  position: relative;
+  width: min(640px, 92vw);
+  max-height: 96vh;
+  transform: rotate(-0.6deg);
+  animation: diary-in 0.35s ease-out;
+}
+@keyframes diary-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-2deg);
+  }
+}
+.diary-sheet {
+  --line: 34px;
+  position: relative;
+  padding: 26px 34px 18px 72px;
+  color: #22305a;
+  font-family: "Caveat", cursive;
+  background:
+    linear-gradient(90deg, transparent 54px, #d77b7066 54px 56px, transparent 56px),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 calc(var(--line) - 1px),
+      #8fa6c455 calc(var(--line) - 1px) var(--line)
+    ),
+    linear-gradient(170deg, #f7f0dc, #ece0bf);
+  background-position: 0 0, 0 14px, 0 0;
+  box-shadow:
+    0 2px 0 #d9ccaa,
+    0 4px 0 #cbbd98,
+    0 30px 70px #0009;
+  border-radius: 2px 6px 6px 2px;
+}
+.diary-sheet header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  height: calc(var(--line) * 1.4);
+}
+.diary-title {
+  font-size: 18px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #9c8c6c;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+}
+.diary-date {
+  font-size: 26px;
+  font-weight: 500;
+  color: #22305a;
+}
+.diary-body {
+  min-height: calc(var(--line) * 8);
+  max-height: calc(92vh - 120px);
+  overflow: auto;
+  cursor: default;
+}
+.diary-body p {
+  margin: 0 0 var(--line);
+  font-size: 27px;
+  line-height: var(--line);
+  min-height: var(--line);
+}
+.diary-body p:empty {
+  display: none;
+}
+/* Someone else's note, taped onto the page. */
+.diary-note {
+  position: relative;
+  margin: 6px 0 calc(var(--line) - 6px) -10px;
+  padding: 16px 22px 10px;
+  max-width: 470px;
+  background: #fbf6e6;
+  color: #4b4a45;
+  transform: rotate(1.4deg);
+  box-shadow: 0 6px 16px #0003;
+  opacity: 0;
+  translate: 0 10px;
+  transition:
+    opacity 0.4s,
+    translate 0.4s;
+}
+.diary-note.shown {
+  opacity: 1;
+  translate: 0 0;
+}
+.diary-note::before,
+.diary-note::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 70px;
+  height: 22px;
+  background: #e9e1c4b8;
+  box-shadow: 0 1px 2px #0002;
+}
+.diary-note::before {
+  left: 18px;
+  transform: rotate(-6deg);
+}
+.diary-note::after {
+  right: 18px;
+  transform: rotate(5deg);
+}
+.diary-note p {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.1;
+}
+.diary-note p:last-child {
+  text-align: right;
+}
+.diary-sheet footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  color: #8f8166;
+}
+.diary-sheet footer button {
+  border: 0;
+  background: none;
+  color: #6d6150;
+  font-size: 24px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+.diary-sheet footer button:disabled {
+  opacity: 0.25;
+}
+.diary-sheet .diary-close {
+  margin-left: auto;
+  font-family: "Caveat", cursive;
+  font-size: 24px;
+  color: #22305a;
+  border-bottom: 2px solid #22305a55;
+}
+.diary-sheet .diary-close:hover {
+  border-bottom-color: #22305a;
+}

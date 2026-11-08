@@ -13,8 +13,8 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232b493e'/%3E%3Cpath d='M32 52Q12 31 15 12Q33 22 32 52M32 52Q33 19 52 15Q51 40 32 52' fill='%23d1d79a'/%3E%3C/svg%3E"
     />
-    <script type="module" crossorigin src="./assets/index-CQMuP4X0.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BCzOHbip.css">
+    <script type="module" crossorigin src="./assets/index-Ct98NuVx.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DxDH3RAi.css">
   </head>
   <body>
     <canvas id="game" aria-label="First person garden game"></canvas>
@@ -64,28 +64,53 @@
     </button>
     <div id="hud" hidden>
       <div class="harvest minimal-harvest">
-        <div class="score-line"><span id="score">0</span><span class="harvest-unit">blades clipped</span></div>
-        <div class="harvest-detail"><b id="percentage">0.0%</b><span>cleared</span></div>
+        <div class="score-line">
+          <span id="score">0</span
+          ><span class="harvest-unit">blades clipped</span>
+        </div>
+        <div class="harvest-detail">
+          <b id="percentage">0.0%</b><span>cleared</span>
+        </div>
         <p id="next-upgrade">Next upgrade in 30 clippings</p>
-        <button id="journal-button" class="upgrade-prompt" aria-label="Open skill tree"><kbd>Tab</kbd><span id="upgrade-label">Skill tree</span></button>
+        <div id="spore-meter" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <clipPath id="spore-clip">
+              <rect id="spore-clip-rect" x="0" y="0" width="24" height="24" />
+            </clipPath>
+            <path class="spore-empty" d="M12 3c-4.6 0-8 3.2-8 7.2 0 1 .8 1.8 1.8 1.8H10l-.8 8.2c0 .5.4.8.8.8h4c.4 0 .8-.3.8-.8L14 12h4.2c1 0 1.8-.8 1.8-1.8C20 6.2 16.6 3 12 3Z" />
+            <path class="spore-full" clip-path="url(#spore-clip)" d="M12 3c-4.6 0-8 3.2-8 7.2 0 1 .8 1.8 1.8 1.8H10l-.8 8.2c0 .5.4.8.8.8h4c.4 0 .8-.3.8-.8L14 12h4.2c1 0 1.8-.8 1.8-1.8C20 6.2 16.6 3 12 3Z" />
+          </svg>
+          <span id="spore-label">Spores ready</span>
+        </div>
+        <button
+          id="journal-button"
+          class="upgrade-prompt"
+          aria-label="Open skill tree"
+        >
+          <kbd>Tab</kbd><span id="upgrade-label">Skill tree</span>
+        </button>
       </div>
-      <div class="day-clock minimal-clock"><span id="time">09:00</span><small>until 19:00</small></div>
+      <div class="day-clock minimal-clock">
+        <span id="time">09:00</span><small>until 19:00</small>
+      </div>
       <div id="crosshair"><i></i></div>
       <div id="interact" hidden role="img">
-        <svg class="eye-icon" viewBox="0 0 32 32" fill="none"><path d="M3 16s5-8 13-8 13 8 13 8-5 8-13 8S3 16 3 16Z"/><circle cx="16" cy="16" r="4"/></svg>
-        <svg class="hand-icon" viewBox="0 0 40 40" fill="none"><path d="M12 32 7 22q-1-4 2-3l5 5V10q0-4 3-2v11-14q3-4 4 0v14-12q3-3 4 1v13-10q3-3 4 1v14q0 6-5 9H16Z"/></svg>
+        <svg class="eye-icon" viewBox="0 0 32 32" fill="none">
+          <path d="M3 16s5-8 13-8 13 8 13 8-5 8-13 8S3 16 3 16Z" />
+          <circle cx="16" cy="16" r="4" />
+        </svg>
+        <svg class="hand-icon" viewBox="0 0 40 40" fill="none">
+          <path
+            d="M12 32 7 22q-1-4 2-3l5 5V10q0-4 3-2v11-14q3-4 4 0v14-12q3-3 4 1v13-10q3-3 4 1v14q0 6-5 9H16Z"
+          />
+        </svg>
+        <div id="interact-actions" hidden></div>
       </div>
       <div id="harvest-pop"></div>
-      <div id="critical" hidden>
-        <span>A PERFECT MOMENT</span>
-        <div class="critical-track">
-          <i class="sweet-zone"></i><b id="critical-marker"></b>
-        </div>
-        <small>Click as the needle crosses the gold</small>
-      </div>
     </div>
     <div id="flower-veil" hidden aria-hidden="true"></div>
     <div id="arrival-fade" hidden></div>
+    <div id="travel-fade" hidden aria-hidden="true"></div>
     <div id="day-intro" hidden>
       <span>DAY ONE</span>
       <h2>Mowing on.</h2>
@@ -101,7 +126,10 @@
           Back to the garden <span>↗</span>
         </button>
         <div class="settings">
-          <label>Ambient music <input id="music-volume" type="range" min="0" max="100" value="55"/></label>
+          <label
+            >Ambient music
+            <input id="music-volume" type="range" min="0" max="100" value="55"
+          /></label>
           <label
             >Sound
             <input
@@ -119,72 +147,76 @@
               max="10"
               value="4" /></label
           ><label
-            >Walking sway <input id="bob" type="checkbox" checked
+            >Walking sway <input id="bob" type="checkbox" checked /></label
+          ><label
+            >Painted retro look <input id="retro" type="checkbox" checked
           /></label>
         </div>
         <p class="muted">
           WASD · walk &nbsp; / &nbsp; Shift · walk faster<br />1 / 2 · switch
-          tools &nbsp; / &nbsp; Tab · skill tree<br />Click a hand to collect. Click an eye to read.
+          tools &nbsp; / &nbsp; Tab · skill tree &nbsp; / &nbsp; J · diary<br />Click a hand to collect.
+          Click an eye to read.
         </p>
         <button id="restart" class="text-button">Start the day again</button>
       </section>
-      <section id="note-panel" class="panel paper" hidden>
-        <button class="close" data-close aria-label="Close note">×</button
-        ><span class="eyebrow">A NOTE ON THE SHED WALL</span>
-        <h2>Make yourself<br />at home.</h2>
-        <div class="note-copy">
-          <p>
-            The tools in here are yours to use. The clippers are a bit stiff —
-            there’s oil and a stone in the little shelter across the garden.
-          </p>
-          <p>
-            Mind the flower beds. Pull what you can. A little care makes all the
-            difference.
-          </p>
-          <p>
-            You needn’t go into the house.<br /><em
-              >No matter what you hear.</em
-            >
-          </p>
-          <p class="signature">— M.</p>
+      <section id="diary-panel" hidden aria-label="Diary">
+        <div class="diary-sheet">
+          <header>
+            <span class="diary-title">Diary</span>
+            <span class="diary-date"></span>
+          </header>
+          <div class="diary-body" aria-live="polite"></div>
+          <footer>
+            <button class="diary-prev" aria-label="Previous page">‹</button>
+            <span class="diary-count"></span>
+            <button class="diary-next" aria-label="Next page">›</button>
+            <button class="diary-close" data-close>Close diary</button>
+          </footer>
         </div>
-        <button class="primary" data-close>
-          Fold the note <span>↗</span>
-        </button>
       </section>
       <section id="journal-panel" class="panel journal" hidden>
         <button class="close" data-close aria-label="Close field notes">
           ×
         </button>
         <div class="journal-heading">
-          <div>
-            <span class="eyebrow">THE GARDENER’S COMPANION</span>
-            <h2>Room to grow.</h2>
-          </div>
+          <h2>Skills</h2>
           <div class="compost">
-            <b id="compost">0</b><span>clippings to spend</span>
+            <span id="compost-icon"></span>
+            <b id="compost">0</b><span>clippings</span>
           </div>
         </div>
-        <p>Small habits become second nature. Spend your clippings to learn.</p>
-        <div id="skills"></div>
-        <section id="collection" hidden><div class="collection-heading"><h3>Found in the grass</h3><span id="collection-count"></span></div><div id="collection-list"></div></section>
+        <div id="skills" role="group" aria-label="Skill tree"></div>
+        <section id="collection" hidden>
+          <div class="collection-heading">
+            <h3>Found in the grass</h3>
+            <span id="collection-count"></span>
+          </div>
+          <div id="collection-list"></div>
+        </section>
         <div class="journal-footer">
           <span id="inventory">A pair of willing hands.</span
           ><span><kbd>TAB</kbd> Back to the garden</span>
         </div>
       </section>
       <section id="lore-panel" class="panel lore-panel" hidden>
-        <button id="lore-close" class="close" aria-label="Close keepsake">×</button>
-        <span id="lore-meta" class="eyebrow"></span><h2 id="lore-title"></h2>
-        <img id="lore-art" alt="" hidden/><p id="lore-text"></p>
-        <button id="lore-back" class="primary">Put it away <span>↗</span></button>
+        <button id="lore-close" class="close" aria-label="Close keepsake">
+          ×
+        </button>
+        <span id="lore-meta" class="eyebrow"></span>
+        <h2 id="lore-title"></h2>
+        <img id="lore-art" alt="" hidden />
+        <p id="lore-text"></p>
+        <button id="lore-back" class="primary">
+          Put it away <span>↗</span>
+        </button>
       </section>
       <section id="end-panel" class="panel" hidden>
         <span class="eyebrow" id="end-eyebrow">THE END OF A QUIET DAY</span>
         <h2 id="end-title">Time to go.</h2>
         <p id="end-copy"></p>
         <div class="end-stat">
-          <b id="end-score">0</b><span>blades cleared. A little good done.</span>
+          <b id="end-score">0</b
+          ><span>blades cleared. A little good done.</span>
         </div>
         <button id="again" class="primary">
           Another quiet day <span>↗</span>

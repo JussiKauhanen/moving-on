@@ -57,6 +57,9 @@ try {
   await page.screenshot({ path: "test-results/production-title.png" });
   await page.locator("#start").click();
   await page.waitForTimeout(5500);
+  // The first diary entry opens by itself shortly after arriving.
+  await page.locator("#diary-panel .diary-close").click({ timeout: 15000 });
+  await page.waitForTimeout(300);
   assert.ok(await page.evaluate(() => !!document.pointerLockElement));
   assert.equal(
     await page.evaluate(() => window.__garden),

@@ -51,6 +51,9 @@ try {
   assert.ok(await page.evaluate(() => !!window.__garden));
   await page.locator("#start").click();
   await page.waitForTimeout(5500);
+  // The first diary entry opens by itself shortly after arriving.
+  await page.locator("#diary-panel .diary-close").click({ timeout: 15000 });
+  await page.waitForTimeout(300);
   assert.ok(await page.evaluate(() => !!document.pointerLockElement));
   await page.screenshot({ path: "test-results/arrival.png" });
   await page.keyboard.down("KeyW");
@@ -84,9 +87,9 @@ try {
   );
   console.log("Hand harvesting", s);
   await interact("note", -12, -10);
-  assert.equal((await snapshot()).modal, "note");
-  await page.screenshot({ path: "test-results/note.png" });
-  await page.locator("#note-panel .primary").click();
+  assert.equal((await snapshot()).modal, "diary");
+  await page.screenshot({ path: "test-results/diary.png" });
+  await page.locator("#diary-panel .diary-close").click();
   await page.waitForTimeout(200);
   await interact("clippers", -11.2, -9.4);
   assert.ok((await snapshot()).items.includes("clippers"));

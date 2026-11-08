@@ -14,11 +14,15 @@ import { GameAudio } from "./systems/audio.js";
 import { RetroPost } from "./systems/post.js";
 import { Cove, COVE } from "./world/cove.js";
 import { renderSkillTree } from "./ui/skill-tree.js";
-import { pixelIcon } from "./ui/pixel-icons.js";
+import { treeIcon } from "./ui/tree-icons.js";
+import { Diary } from "./ui/diary.js";
+import { gardenDiary } from "./levels/garden-diary.js";
+import "./diary.css";
 import {
   skillCost,
   upgradeProgress,
   toolStats,
+  sporeStats,
   clamp,
 } from "./systems/rules.js";
 // Power cut timing: a short automatic wind-up, then the release.
@@ -142,6 +146,21 @@ const incident = new FlowerIncident({
   hud: $("hud"),
   clouds: { material: cloudMat },
 });
+const diary = new Diary({
+  panel: $("diary-panel"),
+  audio,
+  entries: gardenDiary,
+});
+// "Day one · 09:14", from the in-game clock.
+function clockStamp() {
+  const p = clamp(state.dayTime / level.day.durationSeconds, 0, 1),
+    hours = level.day.startHour + (level.day.endHour - level.day.startHour) * p;
+  return `Day one · ${String(Math.floor(hours)).padStart(2, "0")}:${String(Math.floor((hours % 1) * 60)).padStart(2, "0")}`;
+}
+function writeDiary(id) {
+  setModal("diary");
+  diary.write(id, clockStamp());
+}
 const state = {
   started: false,
   ended: false,
@@ -156,6 +175,7 @@ const state = {
   cooldown: 0,
   held: false,
   power: null,
+  sporeCooldown: 0,
   kick: 0,
   flash: 0,
   hitstop: 0,
@@ -190,7 +210,8 @@ function setModal(name) {
     clearTimeout(toastTimer);
     $("toast").classList.remove("show");
   }
-  for (const id of ["pause", "note", "journal", "lore", "end"])
+  if (state.modal !== "diary") diary.finish();
+  for (const id of ["pause", "diary", "journal", "lore", "end"])
     $(`${id}-panel`).hidden = id !== name;
   $("overlay").hidden = !name;
   if (name) {
@@ -224,6 +245,10 @@ function begin() {
   setTimeout(() => ($("arrival-fade").hidden = true), 1700);
   $("day-intro").hidden = false;
   setTimeout(() => ($("day-intro").hidden = true), 5200);
+  // The first diary entry, once the bus has gone.
+  setTimeout(() => {
+    if (!state.ended && !state.modal && !diary.has("arrival")) writeDiary("arrival");
+  }, 3200);
   player.lock().then((locked) => {
     if (!locked) setModal("pause");
   });
@@ -256,7 +281,7 @@ $("sensitivity").addEventListener(
 );
 $("bob").addEventListener("change", (e) => (player.bob = e.target.checked));
 $("retro").addEventListener("change", (e) => (post.enabled = e.target.checked));
-$("compost-icon").innerHTML = pixelIcon("clippings");
+$("compost-icon").innerHTML = treeIcon("grass");
 for (const b of document.querySelectorAll("[data-close]"))
   b.addEventListener("click", resume);
 $("journal-button").addEventListener("click", () => {
@@ -299,12 +324,24 @@ addEventListener("keydown", (e) => {
     state.modal === "journal" ? resume() : setModal("journal");
     return;
   }
+  if (state.modal === "diary" && ["KeyJ", "KeyE", "Space"].includes(e.code)) {
+    e.preventDefault();
+    if (diary.writing) diary.finish();
+    else resume();
+    return;
+  }
   if (e.code === "Escape" && state.modal && state.modal !== "pause") {
     e.preventDefault();
     setModal("pause");
     return;
   }
   if (state.modal) return;
+  if (e.code === "KeyJ" && diary.pages.length) {
+    setModal("diary");
+    diary.index = diary.pages.length - 1;
+    diary.show(false);
+    return;
+  }
   if (e.code === "Digit1") equip("hands");
   if (e.code === "Digit2") equip("clippers");
   if (e.code === "KeyE") interact();
@@ -410,7 +447,7 @@ function interact(key = "E") {
     toast("The latch gives way. The garden is yours for the day.");
   } else if (item.id === "note") {
     state.readNote = true;
-    setModal("note");
+    writeDiary("note");
   } else if (item.id === "house") {
     audio.creak();
     toast("Locked. Your work is out here.", 3500);
@@ -605,8 +642,14 @@ function contactCut(action) {
   $("crosshair").classList.remove("cut-hit");
   void $("crosshair").offsetWidth;
   $("crosshair").classList.add("cut-hit");
-  if (tool === "clippers" && state.skills.spores && Math.random() < 0.3)
-    grass.infect(point.x, point.z, stats.radius + 0.4);
+  // Spores ride out on the next cut whenever they have recovered.
+  if (state.skills.spores && state.sporeCooldown <= 0 && blades.length) {
+    const spores = sporeStats(state);
+    grass.infect(point.x, point.z, spores.radius + 0.25, spores.budget);
+    state.sporeCooldown = spores.cooldown;
+    effects.burst(blades, false, true);
+    audio.spores?.();
+  }
   if (!critical && !state.power && Math.random() < stats.critChance)
     chargePower();
   updateHUD();
@@ -660,9 +703,7 @@ function renderSkills() {
   }
   renderSkillTree({
     canvas: $("skills"),
-    detail: $("skill-detail"),
     state,
-    focusId: focusSkill,
     onBuy(skill) {
       const current = state.skills[skill.id] || 0;
       state.compost -= skillCost(skill, current);
@@ -674,7 +715,22 @@ function renderSkills() {
     },
   });
 }
+function updateSporeMeter() {
+  const meter = $("spore-meter");
+  meter.hidden = !state.skills.spores;
+  if (meter.hidden) return;
+  const total = sporeStats(state).cooldown,
+    ready = state.sporeCooldown <= 0;
+  meter.classList.toggle("ready", ready);
+  const fill = ready ? 1 : 1 - state.sporeCooldown / total;
+  $("spore-clip-rect").setAttribute("y", String(24 * (1 - fill)));
+  $("spore-clip-rect").setAttribute("height", String(24 * fill));
+  $("spore-label").textContent = ready
+    ? "Spores ready"
+    : `Spores ${Math.ceil(state.sporeCooldown)}s`;
+}
 function updateHUD() {
+  updateSporeMeter();
   $("score").textContent = state.score.toLocaleString();
   $("percentage").textContent =
     `${((grass.cutCount / grass.tufts.length) * 100).toFixed(1)}%`;
@@ -792,7 +848,8 @@ function frame() {
           contactCut(action);
         }
       }
-      const withered = grass.update(dt, time, state.skills.spread || 0);
+      state.sporeCooldown = Math.max(0, state.sporeCooldown - dt);
+      const withered = grass.update(dt, time, sporeStats(state).wither);
       if (withered.length) {
         award(withered.length);
         effects.burst(withered, false, true);
@@ -884,6 +941,7 @@ addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
   hands.resize(innerWidth, innerHeight);
   post.resize(innerWidth, innerHeight);
+  if (state.modal === "journal") renderSkills();
 });
 updateHUD();
 renderer.compile(scene, camera);
@@ -903,6 +961,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("test")) {
     audio,
     incident,
     discoveries,
+    diary,
     player,
     camera,
     renderer,

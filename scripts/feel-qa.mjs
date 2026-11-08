@@ -20,6 +20,9 @@ try {
   await page.locator("#loading").waitFor({ state: "hidden" });
   await page.locator("#start").click();
   await page.waitForTimeout(5500);
+  // The first diary entry opens by itself shortly after arriving.
+  await page.locator("#diary-panel .diary-close").click({ timeout: 15000 });
+  await page.waitForTimeout(300);
   const scoreBox = await page.locator("#score").boundingBox();
   assert.ok(scoreBox.x < 100 && scoreBox.y < 100, "Score is top left");
   await page.evaluate(() => window.__garden.teleport(-3, 12, 0, -0.5));
